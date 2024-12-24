@@ -42,6 +42,11 @@
 *.idb
 *.pdb
 
+# emacs
+*~
+
+bin
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
