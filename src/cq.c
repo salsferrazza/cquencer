@@ -33,13 +33,13 @@ enum ConnectionState {
 struct Connection {
   int fd;
   enum ConnectionState state;
-  char read_buffer[1024 + sizeof(int)];
-  char write_buffer[1024 + sizeof(int)];
+  char read_buffer[1024];
+  char write_buffer[sizeof(int) + 1024];
 };
 
 struct SequencedMessage {
   long sequence_number;
-  char message_bytes[1024 + sizeof(int)];
+  char message_bytes[1024];
 };
 
 struct SequencedMessage output_message;
