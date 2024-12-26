@@ -298,7 +298,7 @@ static void handle_connection_io(struct Connection *conn) {
 
     // TODO: zero-copy data for the write to multicast
     //       sendfile() using conn->fd?
-    memcpy(conn->write_buffer, output_message.message_bytes, sizeof(output_message.message_bytes));
+    memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
 
     // concat the received message to the reply message
     //    strncat(conn->write_buffer, conn->read_buffer,
