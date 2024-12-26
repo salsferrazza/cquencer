@@ -16,13 +16,16 @@
 #include "./vector.h"
 
 // the size of byte prefixes
-#define PREFIX_LENGTH sizeof(long);
+#define PREFIX_LENGTH sizeof(int)
 
 // the max number of connections that can wait in the queue
 #define CONNECTION_BACKLOG 128
 
+// the maximum size of a message
+#define MESSAGE_LENGTH 1024
+
 // the maximum size of a message (including prefix)
-#define BUFFER_LENGTH (1024 + PREFIX_LENGTH);
+#define BUFFER_LENGTH (PREFIX_LENGTH + MESSAGE_LENGTH)
 
 enum ConnectionState {
   CONN_STATE_REQ = 0,
@@ -33,13 +36,13 @@ enum ConnectionState {
 struct Connection {
   int fd;
   enum ConnectionState state;
-  char read_buffer[1024];
-  char write_buffer[sizeof(int) + 1024];
+  char read_buffer[MESSAGE_LENGTH];
+  char write_buffer[BUFFER_LENGTH];
 };
 
 struct SequencedMessage {
   long sequence_number;
-  char message_bytes[1024];
+  char message_bytes[MESSAGE_LENGTH];
 };
 
 struct SequencedMessage output_message;
