@@ -55,10 +55,14 @@ struct Vector *connections;
 // poll for events
 struct Vector *poll_fds = NULL;
 
-int main(void) {
+int main(int argc, char *argv[]) {
   atexit(cleanup);
   signal(SIGINT, handle_sigint);
 
+  char* listen_port = argv[1];
+  //  char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
+  //int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
+  
   // to store the return value of various function calls for error checking
   int rv;
 
@@ -68,7 +72,7 @@ int main(void) {
   hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
 
   // NULL to assign the address of my local host to socket structures
-  rv = getaddrinfo(NULL, PORT, &hints, &server_info);
+  rv = getaddrinfo(NULL, listen_port, &hints, &server_info);
   if (rv != 0) {
     fprintf(stderr, "getaddrinfo(): %s\n", gai_strerror(rv));
     return EXIT_FAILURE;
@@ -129,7 +133,7 @@ int main(void) {
     return EXIT_FAILURE;
   }
 
-  printf("server is listening on port %s...\n", PORT);
+  printf("server is listening on port %s...\n", listen_port);
 
   // initialize connections vector
   connections = vector_init(sizeof(struct Connection), 0);
