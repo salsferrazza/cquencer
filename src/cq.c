@@ -15,8 +15,14 @@
 #include "./shared.h"
 #include "./vector.h"
 
+// the size of byte prefixes
+#define PREFIX_LENGTH sizeof(long);
+
 // the max number of connections that can wait in the queue
-#define BACKLOG 128
+#define CONNECTION_BACKLOG 128
+
+// the maximum size of a message (including prefix)
+#define BUFFER_LENGTH (1024 + PREFIX_LENGTH);
 
 enum ConnectionState {
   CONN_STATE_REQ = 0,
@@ -27,9 +33,16 @@ enum ConnectionState {
 struct Connection {
   int fd;
   enum ConnectionState state;
-  char read_buffer[1024];
-  char write_buffer[1024];
+  char read_buffer[1024 + sizeof(int)];
+  char write_buffer[1024 + sizeof(int)];
 };
+
+struct SequencedMessage {
+  long sequence_number;
+  char message_bytes[1024 + sizeof(int)];
+};
+
+struct SequencedMessage output_message;
 
 static bool accept_new_connection(void);
 static void handle_connection_io(struct Connection *conn);
@@ -46,7 +59,8 @@ int socket_fd = -1;
 // the sequence number
 long sequence_num = 0;
 
-char output_buf[20];
+// the sequence number as string
+char sequence_chars[20];
 
 // a vector of Connection structs to store the active connections
 struct Vector *connections;
@@ -127,7 +141,7 @@ int main(int argc, char *argv[]) {
 
   // time to listen for incoming connections
   // BACKLOG is the max number of connections that can wait in the queue
-  rv = listen(socket_fd, BACKLOG);
+  rv = listen(socket_fd, CONNECTION_BACKLOG);
   if (rv == -1) {
     perror("listen()");
     return EXIT_FAILURE;
@@ -244,6 +258,13 @@ static bool accept_new_connection(void) {
 
 static void handle_connection_io(struct Connection *conn) {
   if (conn->state == CONN_STATE_REQ) {
+
+    // TODO: handle length-prefixing here. Read n bytes (where n
+    //       is the size of the prefix), then read the number of
+    //       bytes indicated by casting the first n bytes to a
+    //       long i. Then read i bytes into the buffer, prefix with
+    //       sequence number, then prefix the combined byte array 
+    //       with its own length and send to multicast connection
     int bytes_read =
         recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer) - 1, 0);
     if (bytes_read == -1) {
@@ -267,17 +288,21 @@ static void handle_connection_io(struct Connection *conn) {
     //       over the multicast interface specified on CLI.
 
     sequence_num++;
-    sprintf(output_buf, "%ld", sequence_num);
+    output_message.sequence_number = sequence_num;
+    memcpy(output_message.message_bytes, conn->read_buffer, sizeof(output_message.message_bytes));
+    
+    sprintf(sequence_chars, "%ld", sequence_num);
       
-    printf("%s: %s\n", output_buf, conn->read_buffer);
+    printf("%s: %s\n", sequence_chars, output_message.message_bytes);
   } else if (conn->state == CONN_STATE_RES) {
 
     // TODO: zero-copy data for the write to multicast
-    memcpy(conn->write_buffer, output_buf, sizeof(output_buf));
+    //       sendfile() using conn->fd?
+    memcpy(conn->write_buffer, output_message.message_bytes, sizeof(output_message.message_bytes));
 
     // concat the received message to the reply message
-    strncat(conn->write_buffer, conn->read_buffer,
-            sizeof(conn->write_buffer) - sizeof(output_buf));
+    //    strncat(conn->write_buffer, conn->read_buffer,
+    //      sizeof(conn->write_buffer) - sizeof(sequence_chars));
 
     int bytes_sent =
       // TODO: send to multicast
