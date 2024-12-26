@@ -16,7 +16,7 @@
 #include "./vector.h"
 
 // the max number of connections that can wait in the queue
-#define BACKLOG 5
+#define BACKLOG 128
 
 enum ConnectionState {
   CONN_STATE_REQ = 0,
@@ -42,6 +42,11 @@ struct addrinfo *server_info = NULL;
 
 // the socket file descriptor
 int socket_fd = -1;
+
+// the sequence number
+long sequence_num = 0;
+
+char output_buf[20];
 
 // a vector of Connection structs to store the active connections
 struct Vector *connections;
@@ -109,6 +114,9 @@ int main(void) {
     exit(EXIT_FAILURE);
   }
 
+  // TODO: join multicast group and maintain connection for outbound
+  //       sequenced message output
+  
   // free server_info because we don't need it anymore
   freeaddrinfo(server_info);
   server_info = NULL; // to avoid dangling pointer (& double free at cleanup())
@@ -253,18 +261,23 @@ static void handle_connection_io(struct Connection *conn) {
     //       read buffer of the connection. Then send the buffer as
     //       a sequenced *and* length-prefixed byte array of the payload
     //       over the multicast interface specified on CLI.
-    
-    printf("client %d says: %s\n", conn->fd, conn->read_buffer);
+
+    sequence_num++;
+    sprintf(output_buf, "%ld", sequence_num);
+      
+    printf("%s: %s\n", output_buf, conn->read_buffer);
   } else if (conn->state == CONN_STATE_RES) {
-    char reply_start[] = "you said: ";
-    memcpy(conn->write_buffer, reply_start, sizeof(reply_start));
+
+    // TODO: zero-copy data for the write to multicast
+    memcpy(conn->write_buffer, output_buf, sizeof(output_buf));
 
     // concat the received message to the reply message
     strncat(conn->write_buffer, conn->read_buffer,
-            sizeof(conn->write_buffer) - sizeof(reply_start));
+            sizeof(conn->write_buffer) - sizeof(output_buf));
 
     int bytes_sent =
-        send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
+      // TODO: send to multicast
+      send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
     if (bytes_sent == -1) {
       perror("handle_client_message(): send()");
       return;
