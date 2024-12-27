@@ -12,6 +12,8 @@
 #include <string.h>     // for memcpy(), strncat(), strlen()
 #include <sys/socket.h> // for socket(), bind(), listen(), accept(), recv(), send()
 #include <unistd.h>     // for close()
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "./vector.h"
 
@@ -46,11 +48,12 @@ struct SequencedMessage {
   char message_bytes[MESSAGE_LENGTH];
 };
 typedef struct SequencedMessage SequencedMessage;
-
 SequencedMessage output_message;
 
+typedef struct sockaddr_in sockaddr_in;
+
 static bool accept_new_connection(void);
-static void handle_connection_io(Connection *conn);
+static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
 
 static void cleanup(void);
 static void handle_sigint(int sig);
@@ -59,8 +62,11 @@ static void handle_sigint(int sig);
 struct addrinfo *server_info = NULL;
 typedef struct addrinfo addrinfo;
 
-// the socket file descriptor
-int socket_fd = -1;
+// the tcp socket file descriptor
+int tcp_fd = -1;
+
+// the udp file descriptor
+int udp_fd = -1;
 
 // the sequence number
 long sequence_num = 0;
@@ -82,12 +88,14 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, handle_sigint);
 
   char* listen_port = argv[1];
-  //  char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
-  //int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
-  
+  char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
+  int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
+
   // to store the return value of various function calls for error checking
   int rv;
 
+  /** SET UP TCP SOCKETS FOR INBOUND MESSAGES **/
+  
   addrinfo hints = {0};     // make sure the struct is empty
   hints.ai_family = AF_UNSPEC;     // don't care whether it's IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
@@ -105,8 +113,8 @@ int main(int argc, char *argv[]) {
   for (p = server_info; p != NULL; p = p->ai_next) {
     // create a socket, which apparently is no good by itself because it's not
     // bound to an address and port number
-    socket_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-    if (socket_fd == -1) {
+    tcp_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+    if (tcp_fd == -1) {
       perror("socket()");
       continue;
     }
@@ -116,16 +124,16 @@ int main(int argc, char *argv[]) {
     // will still be hanging around for a while, and if you try to restart
     // the server, you'll get an "Address already in use" error message
     int yes = 1;
-    rv = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+    rv = setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
     if (rv == -1) {
       perror("setsockopt()");
       exit(EXIT_FAILURE);
     }
 
     // bind the socket to the address and port number
-    rv = bind(socket_fd, p->ai_addr, p->ai_addrlen);
+    rv = bind(tcp_fd, p->ai_addr, p->ai_addrlen);
     if (rv == -1) {
-      close(socket_fd);
+      close(tcp_fd);
       perror("bind()");
       continue;
     }
@@ -149,7 +157,7 @@ int main(int argc, char *argv[]) {
 
   // time to listen for incoming connections
   // BACKLOG is the max number of connections that can wait in the queue
-  rv = listen(socket_fd, CONNECTION_BACKLOG);
+  rv = listen(tcp_fd, CONNECTION_BACKLOG);
   if (rv == -1) {
     perror("listen()");
     return EXIT_FAILURE;
@@ -164,13 +172,27 @@ int main(int argc, char *argv[]) {
   // initialize the poll_fds vector
   poll_fds = vector_init(sizeof(struct pollfd), 0);
 
+  /** SET UP UDP MULTICAST FOR PUBLISHING **/
+  
+  struct sockaddr_in multicast_addr;
+  memset(&multicast_addr, 0, sizeof(multicast_addr));
+  multicast_addr.sin_family = AF_INET;
+  multicast_addr.sin_addr.s_addr = inet_addr(send_group);
+  multicast_addr.sin_port = htons(send_port);
+
+  udp_fd = socket(multicast_addr.sin_family, SOCK_DGRAM, 0);
+  if (udp_fd < 0) {
+    perror("socket()");
+    return 1;
+  }
+  
   // the event loop
   while (true) {
     // clear the poll_fds vector
     vector_clear(poll_fds);
 
     // initialize the pollfd struct for the socket file descriptor
-    struct pollfd socket_pfd = {socket_fd, POLLIN, 0};
+    struct pollfd socket_pfd = {tcp_fd, POLLIN, 0};
     vector_push(poll_fds, &socket_pfd);
 
     size_t num_connections = vector_length(connections);
@@ -226,8 +248,7 @@ int main(int argc, char *argv[]) {
           // this should never happen, but just in case
           continue;
         }
-
-        handle_connection_io(conn);
+        handle_connection_io(conn, udp_fd, multicast_addr);
       }
     }
 
@@ -260,7 +281,7 @@ static bool accept_new_connection(void) {
   struct sockaddr_storage client_addr = {};
   socklen_t addr_size = sizeof client_addr;
 
-  int conn_fd = accept(socket_fd, (struct sockaddr *)&client_addr, &addr_size);
+  int conn_fd = accept(tcp_fd, (struct sockaddr *)&client_addr, &addr_size);
   if (conn_fd == -1) {
     perror("accept()");
     return false;
@@ -280,7 +301,7 @@ static bool accept_new_connection(void) {
   return true;
 }
 
-static void handle_connection_io(struct Connection *conn) {
+static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr) {
   if (conn->state == CONN_STATE_REQ) {
 
     // TODO: handle length-prefixing here. Read n bytes (where n
@@ -311,20 +332,29 @@ static void handle_connection_io(struct Connection *conn) {
 
     sequence_num++;
     output_message.sequence_number = sequence_num;
-    memcpy(output_message.message_bytes, conn->read_buffer, sizeof(output_message.message_bytes));
-    
     sprintf(sequence_chars, "%ld", sequence_num);
 
+    int nbytes = sendto(
+            udp_fd,
+            sequence_chars,
+            strlen(sequence_chars),
+            0,
+            (struct sockaddr*) &multicast_addr,
+            sizeof(multicast_addr)
+        );
+    if (nbytes < 0) {
+      perror("sendto");
+      return;
+    }
+
+    memcpy(output_message.message_bytes, conn->read_buffer, sizeof(output_message.message_bytes));
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    
     printf("%s: %s\n", sequence_chars, output_message.message_bytes);
-  } else if (conn->state == CONN_STATE_RES) {
-
-    //    if (is_connected(conn->fd) == 0) {
+  } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
-      // TODO: send to multicast
       send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
     if (bytes_sent == -1) {
       perror("handle_client_message(): send()");
@@ -340,8 +370,8 @@ static void handle_connection_io(struct Connection *conn) {
 
 static void cleanup(void) {
   // close the socket file descriptor
-  if (socket_fd != -1) {
-    close(socket_fd);
+  if (tcp_fd != -1) {
+    close(tcp_fd);
   }
 
   // free the addrinfo linked list
