@@ -76,7 +76,9 @@ struct Vector *connections;
 struct Vector *poll_fds = NULL;
 
 int main(int argc, char *argv[]) {
+
   atexit(cleanup);
+  signal(SIGPIPE, SIG_IGN);
   signal(SIGINT, handle_sigint);
 
   char* listen_port = argv[1];
@@ -325,13 +327,10 @@ static void handle_connection_io(struct Connection *conn) {
       send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
     if (bytes_sent == -1) {
       perror("handle_client_message(): send()");
+      conn->state = CONN_STATE_END;
       return;
     }
-    // reset the connection state to CONN_STATE_REQ
     conn->state = CONN_STATE_REQ;
-      //    } else {
-      //conn->state = CONN_STATE_END;
-      //}
   } else {
     fputs("handle_connection_io(): invalid state\n", stderr);
     exit(EXIT_FAILURE);
