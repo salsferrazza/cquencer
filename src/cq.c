@@ -36,7 +36,7 @@ enum ConnectionState {
 struct Connection {
   int fd;
   enum ConnectionState state;
-  char read_buffer[MESSAGE_LENGTH];
+  char read_buffer[BUFFER_LENGTH];
   char write_buffer[BUFFER_LENGTH];
 };
 typedef struct Connection Connection;
@@ -57,6 +57,7 @@ static void handle_sigint(int sig);
 
 // to store the address information of the server
 struct addrinfo *server_info = NULL;
+typedef struct addrinfo addrinfo;
 
 // the socket file descriptor
 int socket_fd = -1;
@@ -87,7 +88,7 @@ int main(int argc, char *argv[]) {
   // to store the return value of various function calls for error checking
   int rv;
 
-  struct addrinfo hints = {0};     // make sure the struct is empty
+  addrinfo hints = {0};     // make sure the struct is empty
   hints.ai_family = AF_UNSPEC;     // don't care whether it's IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
   hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
@@ -100,7 +101,7 @@ int main(int argc, char *argv[]) {
   }
 
   // loop through all the results and bind to the first we can
-  struct addrinfo *p;
+  addrinfo *p;
   for (p = server_info; p != NULL; p = p->ai_next) {
     // create a socket, which apparently is no good by itself because it's not
     // bound to an address and port number
