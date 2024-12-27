@@ -148,9 +148,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  // TODO: join multicast group and maintain connection for outbound
-  //       sequenced message output
-  
   // free server_info because we don't need it anymore
   freeaddrinfo(server_info);
   server_info = NULL; // to avoid dangling pointer (& double free at cleanup())
@@ -260,22 +257,7 @@ int main(int argc, char *argv[]) {
 
   return EXIT_SUCCESS;
 }
-/**
-static int is_connected(int sockfd) {
-    char dummy;
-    int result = recv(sockfd, &dummy, 1, MSG_PEEK);
-    if (result == 0) {
-        // Connection closed by the peer
-        return 0;
-    } else if (result == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-        // No data available, but the socket is still connected
-        return 1;
-    } else {
-        // Error occurred
-        return 0;
-    }
-}
-*/
+
 static bool accept_new_connection(void) {
   // accept
   struct sockaddr_storage client_addr = {};
@@ -304,12 +286,6 @@ static bool accept_new_connection(void) {
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr) {
   if (conn->state == CONN_STATE_REQ) {
 
-    // TODO: handle length-prefixing here. Read n bytes (where n
-    //       is the size of the prefix), then read the number of
-    //       bytes indicated by casting the first n bytes to a
-    //       long i. Then read i bytes into the buffer, prefix with
-    //       sequence number, then prefix the combined byte array 
-    //       with its own length and send to multicast connection
     int bytes_read =
         recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer) - 1, 0);
     if (bytes_read == -1) {
@@ -324,16 +300,14 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     conn->read_buffer[bytes_read] = '\0';
 
-   
-    // TODO: add sequence number here to byte array containing the
-    //       read buffer of the connection. Then send the buffer as
-    //       a sequenced *and* length-prefixed byte array of the payload
-    //       over the multicast interface specified on CLI.
-
     sequence_num++;
+
     output_message.sequence_number = sequence_num;
     sprintf(sequence_chars, "%ld", sequence_num);
 
+    // TODO: Manufacture length-prefixed byte array to
+    //       multicast send over UDP. Wire blast should
+    //       be: <prefix_length><sequence_number><payload>
     int nbytes = sendto(
             udp_fd,
             sequence_chars,
