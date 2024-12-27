@@ -1,6 +1,7 @@
 // feature test macro for getaddrinfo() from man pages
 #define _POSIX_C_SOURCE 200112L
 
+#include <errno.h>
 #include <netdb.h>      // for getaddrinfo()
 #include <poll.h>       // for poll()
 #include <signal.h>     // for signal()
@@ -39,16 +40,18 @@ struct Connection {
   char read_buffer[MESSAGE_LENGTH];
   char write_buffer[BUFFER_LENGTH];
 };
+typedef struct Connection Connection;
 
 struct SequencedMessage {
   long sequence_number;
   char message_bytes[MESSAGE_LENGTH];
 };
+typedef struct SequencedMessage SequencedMessage;
 
-struct SequencedMessage output_message;
+SequencedMessage output_message;
 
 static bool accept_new_connection(void);
-static void handle_connection_io(struct Connection *conn);
+static void handle_connection_io(Connection *conn);
 
 static void cleanup(void);
 static void handle_sigint(int sig);
@@ -62,7 +65,7 @@ int socket_fd = -1;
 // the sequence number
 long sequence_num = 0;
 
-// the sequence number as string
+// temp storage of sequence number as string
 char sequence_chars[20];
 
 // a vector of Connection structs to store the active connections
@@ -153,7 +156,7 @@ int main(int argc, char *argv[]) {
   printf("server is listening on port %s...\n", listen_port);
 
   // initialize connections vector
-  connections = vector_init(sizeof(struct Connection), 0);
+  connections = vector_init(sizeof(Connection), 0);
 
   // initialize the poll_fds vector
   poll_fds = vector_init(sizeof(struct pollfd), 0);
@@ -169,7 +172,7 @@ int main(int argc, char *argv[]) {
 
     size_t num_connections = vector_length(connections);
     for (size_t i = 0; i < num_connections;) {
-      struct Connection *conn = vector_get(connections, i);
+      Connection *conn = vector_get(connections, i);
       if (conn->state == CONN_STATE_END) {
         // if the connection is in the end state, close the connection
         close(conn->fd);
@@ -214,7 +217,7 @@ int main(int argc, char *argv[]) {
 
       struct pollfd *pfd = vector_get(poll_fds, i);
       if (pfd->revents) {
-        struct Connection *conn = vector_get(connections, i - 1);
+        Connection *conn = vector_get(connections, i - 1);
 
         if (conn == NULL) {
           // this should never happen, but just in case
@@ -233,7 +236,22 @@ int main(int argc, char *argv[]) {
 
   return EXIT_SUCCESS;
 }
-
+/**
+static int is_connected(int sockfd) {
+    char dummy;
+    int result = recv(sockfd, &dummy, 1, MSG_PEEK);
+    if (result == 0) {
+        // Connection closed by the peer
+        return 0;
+    } else if (result == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        // No data available, but the socket is still connected
+        return 1;
+    } else {
+        // Error occurred
+        return 0;
+    }
+}
+*/
 static bool accept_new_connection(void) {
   // accept
   struct sockaddr_storage client_addr = {};
@@ -246,7 +264,7 @@ static bool accept_new_connection(void) {
   }
 
   // creating the struct Conn
-  struct Connection conn = {
+  Connection conn = {
       .fd = conn_fd,
       .state = CONN_STATE_REQ,
   };
@@ -282,9 +300,7 @@ static void handle_connection_io(struct Connection *conn) {
 
     conn->read_buffer[bytes_read] = '\0';
 
-    // this connection is ready to send a response now
-    conn->state = CONN_STATE_RES;
-
+   
     // TODO: add sequence number here to byte array containing the
     //       read buffer of the connection. Then send the buffer as
     //       a sequenced *and* length-prefixed byte array of the payload
@@ -295,18 +311,15 @@ static void handle_connection_io(struct Connection *conn) {
     memcpy(output_message.message_bytes, conn->read_buffer, sizeof(output_message.message_bytes));
     
     sprintf(sequence_chars, "%ld", sequence_num);
-      
+
+    memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
+    // this connection is ready to send a response now
+    conn->state = CONN_STATE_RES;
+   
     printf("%s: %s\n", sequence_chars, output_message.message_bytes);
   } else if (conn->state == CONN_STATE_RES) {
 
-    // TODO: zero-copy data for the write to multicast
-    //       sendfile() using conn->fd?
-    memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
-
-    // concat the received message to the reply message
-    //    strncat(conn->write_buffer, conn->read_buffer,
-    //      sizeof(conn->write_buffer) - sizeof(sequence_chars));
-
+    //    if (is_connected(conn->fd) == 0) {
     int bytes_sent =
       // TODO: send to multicast
       send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
@@ -314,9 +327,11 @@ static void handle_connection_io(struct Connection *conn) {
       perror("handle_client_message(): send()");
       return;
     }
-
     // reset the connection state to CONN_STATE_REQ
     conn->state = CONN_STATE_REQ;
+      //    } else {
+      //conn->state = CONN_STATE_END;
+      //}
   } else {
     fputs("handle_connection_io(): invalid state\n", stderr);
     exit(EXIT_FAILURE);
