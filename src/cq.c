@@ -13,7 +13,6 @@
 #include <sys/socket.h> // for socket(), bind(), listen(), accept(), recv(), send()
 #include <unistd.h>     // for close()
 
-#include "./shared.h"
 #include "./vector.h"
 
 // the size of byte prefixes
@@ -155,7 +154,8 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  printf("server is listening on port %s...\n", listen_port);
+  printf("Listening on port %s...\n", listen_port);
+  printf("Current sequence number is %ld\n", sequence_num);
 
   // initialize connections vector
   connections = vector_init(sizeof(Connection), 0);
