@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 	msg_length = ntohs(msg_length);
 	sequence_num = ntohl(sequence_num);
 	
-        printf("%ld\n", sequence_num);
+        printf("msg %ld has %d bytes\n", sequence_num, msg_length);
 
      }
 

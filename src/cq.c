@@ -46,13 +46,6 @@ struct Connection {
 };
 typedef struct Connection Connection;
 
-struct SequencedMessage {
-  long sequence_number;
-  char message_bytes[MESSAGE_LENGTH];
-};
-typedef struct SequencedMessage SequencedMessage;
-SequencedMessage output_message;
-
 typedef struct sockaddr_in sockaddr_in;
 
 typedef unsigned char byte;
@@ -313,17 +306,23 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     sequence_num++;
 
     // populate outbound message
-    output_message.sequence_number = htonl(sequence_num);
-    memcpy(output_message.message_bytes, conn->read_buffer, bytes_read);
+    // output_message.sequence_number = htonl(sequence_num);
 
+    long seq = htonl(sequence_num);
+    char* payload[bytes_read];
+    memcpy(payload, conn->read_buffer, bytes_read);
+
+    
     // manufacture length prefix for framing
-    int sz = sizeof(output_message);
-    sz = htons(sz);
+    int sz = htons(sizeof(seq) + bytes_read);
 
     // populate output buffer
     memcpy(udp_output_buffer, &sz, PREFIX_LENGTH);
-    memcpy(&udp_output_buffer[PREFIX_LENGTH], &output_message, sizeof(output_message));
+    memcpy(&udp_output_buffer[PREFIX_LENGTH], &seq, sizeof(long));
+    memcpy(&udp_output_buffer[PREFIX_LENGTH + sizeof(long)], &payload, bytes_read);
 
+    //    udp_output_buffer[PREFIX_LENGTH + sizeof(long) + bytes_read] = '\0';
+    
     // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
@@ -347,7 +346,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    
-    printf("%s: %s\n", sequence_chars, output_message.message_bytes);
+    printf("%s: %s\n", sequence_chars, (char *) payload);
 
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
