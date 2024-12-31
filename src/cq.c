@@ -17,6 +17,9 @@
 
 #include "./vector.h"
 
+// for determining system endianness
+#define is_bigendian() ( (∗(char∗)&i) == 0 )
+
 // the size of byte prefixes
 #define PREFIX_LENGTH sizeof(int)
 
@@ -73,6 +76,8 @@ long sequence_num = 0;
 
 // temp storage of sequence number as string
 char sequence_chars[20];
+
+char udp_output_buffer[BUFFER_LENGTH];
 
 // a vector of Connection structs to store the active connections
 struct Vector *connections;
@@ -303,15 +308,31 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     sequence_num++;
 
     output_message.sequence_number = sequence_num;
+    
     sprintf(sequence_chars, "%ld", sequence_num);
 
-    // TODO: Manufacture length-prefixed byte array to
-    //       multicast send over UDP. Wire blast should
-    //       be: <prefix_length><sequence_number><payload>
-    int nbytes = sendto(
+    int msg_size = sizeof(output_message);
+
+    memcpy(udp_output_buffer, &msg_size, sizeof(int));
+    memcpy(udp_output_buffer, conn->read_buffer, bytes_read);
+
+    memcpy(output_message.message_bytes, conn->read_buffer, bytes_read);
+    
+    // send length-prefix
+    int nbytes = sendto(udp_fd, &msg_size,
+			sizeof(PREFIX_LENGTH), 0, 
+			(struct sockaddr*) &multicast_addr,
+			sizeof(multicast_addr));
+    if (nbytes < 0) {
+      perror("sendto");
+      return;
+    }
+
+    // send payload byte array
+    nbytes = sendto(
             udp_fd,
-            sequence_chars,
-            strlen(sequence_chars),
+            (struct SequencedMessage *) &output_message, 
+	    sizeof(output_message),
             0,
             (struct sockaddr*) &multicast_addr,
             sizeof(multicast_addr)
@@ -321,8 +342,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
-    memcpy(output_message.message_bytes, conn->read_buffer, sizeof(output_message.message_bytes));
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
+
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    

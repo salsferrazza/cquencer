@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MSGBUFSIZE 256
+#define MSGBUFSIZE 1024
 
 int main(int argc, char *argv[])
 {
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         msgbuf[nbytes] = '\0';
-        puts(msgbuf);
+        printf("%d\n", nbytes);
      }
 
 #ifdef _WIN32
