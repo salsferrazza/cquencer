@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         msgbuf[nbytes] = '\0';
-        printf("%d\n", nbytes);
+        printf("%d", nbytes);
      }
 
 #ifdef _WIN32

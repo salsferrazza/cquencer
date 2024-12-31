@@ -77,6 +77,8 @@ long sequence_num = 0;
 // temp storage of sequence number as string
 char sequence_chars[20];
 
+// char prefix_length_bytes[sizeof(int)];
+
 char udp_output_buffer[BUFFER_LENGTH];
 
 // a vector of Connection structs to store the active connections
@@ -313,7 +315,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     int msg_size = sizeof(output_message);
 
-    memcpy(udp_output_buffer, &msg_size, sizeof(int));
+    //    memcpy(prefix_length_size, &msg_size, sizeof(int));
     memcpy(udp_output_buffer, conn->read_buffer, bytes_read);
 
     memcpy(output_message.message_bytes, conn->read_buffer, bytes_read);
