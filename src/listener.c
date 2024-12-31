@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MSGBUFSIZE 1024
+#define MSGBUFSIZE 1024 + sizeof(int) + sizeof(long)
 
 int main(int argc, char *argv[])
 {
@@ -117,7 +117,18 @@ int main(int argc, char *argv[])
             return 1;
         }
         msgbuf[nbytes] = '\0';
-        printf("%d\n", nbytes);
+
+	long sequence_num;
+	int msg_length;
+
+	memcpy(&msg_length, &msgbuf, sizeof(int));
+	memcpy(&sequence_num, &msgbuf[sizeof(int)], sizeof(long));
+	
+	msg_length = ntohs(msg_length);
+	sequence_num = ntohl(sequence_num);
+	
+        printf("%ld\n", sequence_num);
+
      }
 
 #ifdef _WIN32

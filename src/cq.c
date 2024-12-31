@@ -30,7 +30,7 @@
 #define MESSAGE_LENGTH 1024
 
 // the maximum size of a message (including prefix)
-#define BUFFER_LENGTH (PREFIX_LENGTH + MESSAGE_LENGTH)
+#define BUFFER_LENGTH (PREFIX_LENGTH + MESSAGE_LENGTH + sizeof(long))
 
 enum ConnectionState {
   CONN_STATE_REQ = 0,
@@ -55,6 +55,8 @@ SequencedMessage output_message;
 
 typedef struct sockaddr_in sockaddr_in;
 
+typedef unsigned char byte;
+
 static bool accept_new_connection(void);
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
 
@@ -77,8 +79,7 @@ long sequence_num = 0;
 // temp storage of sequence number as string
 char sequence_chars[20];
 
-// char prefix_length_bytes[sizeof(int)];
-
+// UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
 
 // a vector of Connection structs to store the active connections
@@ -305,36 +306,29 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
+    // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
 
+    // increment sequence #
     sequence_num++;
 
-    output_message.sequence_number = sequence_num;
-    
-    sprintf(sequence_chars, "%ld", sequence_num);
-
-    //    int msg_size = sizeof(output_message);
-
-    //    memcpy(prefix_length_size, &msg_size, sizeof(int));
-    //memcpy(udp_output_buffer, conn->read_buffer, bytes_read);
-
+    // populate outbound message
+    output_message.sequence_number = htonl(sequence_num);
     memcpy(output_message.message_bytes, conn->read_buffer, bytes_read);
-    
-    // send length-prefix
-    /*    int nbytes = sendto(udp_fd, &msg_size,
-			sizeof(PREFIX_LENGTH), 0, 
-			(struct sockaddr*) &multicast_addr,
-			sizeof(multicast_addr));
-    if (nbytes < 0) {
-      perror("sendto");
-      return;
-      }*/
 
-    // send payload byte array
+    // manufacture length prefix for framing
+    int sz = sizeof(output_message);
+    sz = htons(sz);
+
+    // populate output buffer
+    memcpy(udp_output_buffer, &sz, PREFIX_LENGTH);
+    memcpy(&udp_output_buffer[PREFIX_LENGTH], &output_message, sizeof(output_message));
+
+    // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
-            (struct SequencedMessage *) &output_message, 
-	    sizeof(output_message),
+            (char *) udp_output_buffer, 
+	    sizeof(udp_output_buffer),
             0,
             (struct sockaddr*) &multicast_addr,
             sizeof(multicast_addr)
@@ -344,12 +338,17 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
+    // for response back to TCP client
+    sprintf(sequence_chars, "%ld", sequence_num);
+
+    // populate TCP write buffer
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
 
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    
     printf("%s: %s\n", sequence_chars, output_message.message_bytes);
+
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
       send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
