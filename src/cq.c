@@ -313,25 +313,25 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     
     sprintf(sequence_chars, "%ld", sequence_num);
 
-    int msg_size = sizeof(output_message);
+    //    int msg_size = sizeof(output_message);
 
     //    memcpy(prefix_length_size, &msg_size, sizeof(int));
-    memcpy(udp_output_buffer, conn->read_buffer, bytes_read);
+    //memcpy(udp_output_buffer, conn->read_buffer, bytes_read);
 
     memcpy(output_message.message_bytes, conn->read_buffer, bytes_read);
     
     // send length-prefix
-    int nbytes = sendto(udp_fd, &msg_size,
+    /*    int nbytes = sendto(udp_fd, &msg_size,
 			sizeof(PREFIX_LENGTH), 0, 
 			(struct sockaddr*) &multicast_addr,
 			sizeof(multicast_addr));
     if (nbytes < 0) {
       perror("sendto");
       return;
-    }
+      }*/
 
     // send payload byte array
-    nbytes = sendto(
+    int nbytes = sendto(
             udp_fd,
             (struct SequencedMessage *) &output_message, 
 	    sizeof(output_message),
