@@ -120,15 +120,18 @@ int main(int argc, char *argv[])
 
 	long sequence_num;
 	int msg_length;
+	char payload[nbytes + 1];
 
 	memcpy(&msg_length, &msgbuf, sizeof(int));
 	memcpy(&sequence_num, &msgbuf[sizeof(int)], sizeof(long));
+	memcpy(&payload, &msgbuf[sizeof(int) + sizeof(long)], nbytes);
 	
 	msg_length = ntohs(msg_length);
 	sequence_num = ntohl(sequence_num);
-	
-        printf("msg %ld has %d bytes\n", sequence_num, msg_length);
 
+	
+        printf("%ld: %s\n", sequence_num, (char *) payload); 
+	
      }
 
 #ifdef _WIN32
