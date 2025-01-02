@@ -309,25 +309,22 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // output_message.sequence_number = htonl(sequence_num);
 
     long seq = htonl(sequence_num);
-    char* payload[bytes_read];
-    memcpy(payload, conn->read_buffer, bytes_read);
-
     
     // manufacture length prefix for framing
     int sz = htons(sizeof(seq) + bytes_read);
 
+    char* obuf[sizeof(int) + sizeof(seq) + bytes_read];
+    
     // populate output buffer
-    memcpy(udp_output_buffer, &sz, PREFIX_LENGTH);
-    memcpy(&udp_output_buffer[PREFIX_LENGTH], &seq, sizeof(long));
-    memcpy(&udp_output_buffer[PREFIX_LENGTH + sizeof(long)], &payload, bytes_read);
-
-    //    udp_output_buffer[PREFIX_LENGTH + sizeof(long) + bytes_read] = '\0';
+    memcpy(obuf, &sz, sizeof(sz));
+    memcpy(&obuf[PREFIX_LENGTH], &seq, sizeof(long));
+    memcpy(&obuf[PREFIX_LENGTH + sizeof(long)], conn->read_buffer, bytes_read);
     
     // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
-            (char *) udp_output_buffer, 
-	    sizeof(udp_output_buffer),
+            (char *) obuf, 
+	    sizeof(obuf),
             0,
             (struct sockaddr*) &multicast_addr,
             sizeof(multicast_addr)
@@ -346,7 +343,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    
-    printf("%s: %s\n", sequence_chars, (char *) payload);
+    printf("%s: payload %d bytes\n", sequence_chars, bytes_read);
 
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
