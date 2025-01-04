@@ -304,26 +304,29 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // increment sequence #
     sequence_num++;
+    
+    // size of entire buffer to send 
+    int bufsize = sizeof(sequence_num) + bytes_read;
 
-    // populate outbound message
-    // output_message.sequence_number = htonl(sequence_num);
+    // prefixed send buffer
+    char* obuf = malloc(sizeof(int) + bufsize);
 
+    // package the sequence number + prefix
+    int sz = htons(bufsize);
     long seq = htonl(sequence_num);
     
-    // manufacture length prefix for framing
-    int sz = htons(sizeof(seq) + bytes_read);
-
-    char* obuf[sizeof(int) + sizeof(seq) + bytes_read];
-    
     // populate output buffer
-    memcpy(obuf, &sz, sizeof(sz));
-    memcpy(&obuf[PREFIX_LENGTH], &seq, sizeof(long));
-    memcpy(&obuf[PREFIX_LENGTH + sizeof(long)], conn->read_buffer, bytes_read);
-    
+    memcpy(obuf, &sz, sizeof(sz)); // length prefix 
+    memcpy(obuf + sizeof(sz), &seq, sizeof(seq)); // sequence # 
+    memcpy(obuf + sizeof(sz) + sizeof(seq), conn->read_buffer, sizeof(conn->read_buffer)); // msg
+
+    // for response back to TCP client
+    sprintf(sequence_chars, "%ld", sequence_num);
+
     // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
-            (char *) obuf, 
+	    obuf,
 	    sizeof(obuf),
             0,
             (struct sockaddr*) &multicast_addr,
@@ -334,8 +337,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
-    // for response back to TCP client
-    sprintf(sequence_chars, "%ld", sequence_num);
+    free(obuf);
+    
 
     // populate TCP write buffer
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
@@ -343,7 +346,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    
-    printf("%s: payload %d bytes\n", sequence_chars, bytes_read);
+    printf("send %ld: %d bytes: %s\n", sequence_num, bufsize, obuf + sizeof(int) + sizeof(long));
 
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =

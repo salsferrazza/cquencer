@@ -106,12 +106,13 @@ int main(int argc, char *argv[])
         int addrlen = sizeof(addr);
         int nbytes = recvfrom(
             fd,
-            msgbuf,
+            &msgbuf,
             MSGBUFSIZE,
             0,
             (struct sockaddr *) &addr,
             (socklen_t *) &addrlen
         );
+
         if (nbytes < 0) {
             perror("recvfrom");
             return 1;
@@ -119,18 +120,23 @@ int main(int argc, char *argv[])
         msgbuf[nbytes] = '\0';
 
 	long sequence_num;
-	int msg_length;
-	char payload[nbytes + 1];
+	int sz;
 
-	memcpy(&msg_length, &msgbuf, sizeof(int));
-	memcpy(&sequence_num, &msgbuf[sizeof(int)], sizeof(long));
-	memcpy(&payload, &msgbuf[sizeof(int) + sizeof(long)], nbytes);
-	
-	msg_length = ntohs(msg_length);
+	memcpy(&sz, msgbuf, sizeof(sz));
+	sz = ntohs(sz);
+
+	memcpy(&sequence_num, &msgbuf[sizeof(sz)], sizeof(sequence_num));
 	sequence_num = ntohl(sequence_num);
 
+        printf("recv %ld: %d bytes\n", sequence_num, sz);
 	
-        printf("%ld: %s\n", sequence_num, (char *) payload); 
+	/*	char *payload = malloc(sz - sizeof(sequence_num) + 1);
+	memcpy(payload, msgbuf + sizeof(sz) + sizeof(sequence_num), sizeof(payload) - 1);
+	payload[sizeof(payload)] = '\0';
+
+	free(payload);*/
+	
+	//	free(msg);
 	
      }
 
