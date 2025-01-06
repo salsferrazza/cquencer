@@ -27,13 +27,15 @@
 
 #define MSGBUFSIZE 1024 + sizeof(int) + sizeof(long)
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  
     if (argc != 3) {
        printf("Command line args should be multicast group and port\n");
        printf("(e.g. for SSDP, `listener 239.255.255.250 1900`)\n");
        return 1;
     }
+
+    setbuf(stdout, NULL); // unbuffer STDOUT
 
     char* group = argv[1]; // e.g. 239.255.255.250 for SSDP
     int port = atoi(argv[2]); // 0 if error, which is an invalid port
@@ -119,24 +121,11 @@ int main(int argc, char *argv[])
         }
         msgbuf[nbytes] = '\0';
 
-	long sequence_num;
 	int sz;
-
 	memcpy(&sz, msgbuf, sizeof(sz));
 	sz = ntohs(sz);
 
-	memcpy(&sequence_num, &msgbuf[sizeof(sz)], sizeof(sequence_num));
-	sequence_num = ntohl(sequence_num);
-
-        printf("recv %ld: %d bytes\n", sequence_num, sz);
-	
-	/*	char *payload = malloc(sz - sizeof(sequence_num) + 1);
-	memcpy(payload, msgbuf + sizeof(sz) + sizeof(sequence_num), sizeof(payload) - 1);
-	payload[sizeof(payload)] = '\0';
-
-	free(payload);*/
-	
-	//	free(msg);
+	fwrite(msgbuf, sizeof(msgbuf[0]), nbytes, stdout);
 	
      }
 

@@ -305,20 +305,20 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // increment sequence #
     sequence_num++;
     
-    // size of entire buffer to send 
-    int bufsize = sizeof(sequence_num) + bytes_read;
-
-    // prefixed send buffer
-    char* obuf = malloc(sizeof(int) + bufsize);
-
-    // package the sequence number + prefix
-    int sz = htons(bufsize);
+    // size of msg (without prefix)
+    int seqmsg_size = sizeof(sequence_num) + bytes_read;
+    int sz = htons(seqmsg_size);
+    
+    // sequence # value in network byte order
     long seq = htonl(sequence_num);
     
+    // prefixed send buffer
+    char* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
+
     // populate output buffer
     memcpy(obuf, &sz, sizeof(sz)); // length prefix 
     memcpy(obuf + sizeof(sz), &seq, sizeof(seq)); // sequence # 
-    memcpy(obuf + sizeof(sz) + sizeof(seq), conn->read_buffer, sizeof(conn->read_buffer)); // msg
+    memcpy(obuf + sizeof(sz) + sizeof(seq), conn->read_buffer, bytes_read); // msg
 
     // for response back to TCP client
     sprintf(sequence_chars, "%ld", sequence_num);
@@ -337,6 +337,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
+    printf("send %ld: pfx %lu msg %d bytes: %s\n", sequence_num, sizeof(sz), seqmsg_size, obuf + sizeof(seqmsg_size) + sizeof(seq));
+
     free(obuf);
     
 
@@ -346,7 +348,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    
-    printf("send %ld: %d bytes: %s\n", sequence_num, bufsize, obuf + sizeof(int) + sizeof(long));
 
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
