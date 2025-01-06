@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
 #endif
 
     // create what looks like an ordinary UDP socket
-    //
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
         perror("socket");
@@ -61,7 +60,6 @@ int main(int argc, char *argv[]) {
     }
 
     // allow multiple sockets to use the same PORT number
-    //
     u_int yes = 1;
     if (
         setsockopt(
@@ -72,8 +70,7 @@ int main(int argc, char *argv[]) {
        return 1;
     }
 
-        // set up destination address
-    //
+    // set up destination address
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -81,14 +78,12 @@ int main(int argc, char *argv[]) {
     addr.sin_port = htons(port);
 
     // bind to receive address
-    //
     if (bind(fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
         perror("bind");
         return 1;
     }
 
     // use setsockopt() to request that the kernel join a multicast group
-    //
     struct ip_mreq mreq;
     mreq.imr_multiaddr.s_addr = inet_addr(group);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
@@ -102,7 +97,6 @@ int main(int argc, char *argv[]) {
     }
 
     // now just enter a read-print loop
-    //
     while (1) {
         char msgbuf[MSGBUFSIZE];
         int addrlen = sizeof(addr);
@@ -114,18 +108,19 @@ int main(int argc, char *argv[]) {
             (struct sockaddr *) &addr,
             (socklen_t *) &addrlen
         );
-
+	
         if (nbytes < 0) {
             perror("recvfrom");
             return 1;
         }
         msgbuf[nbytes] = '\0';
 
-	int sz;
+	// get size of message from length prefix
+	short sz;
 	memcpy(&sz, msgbuf, sizeof(sz));
 	sz = ntohs(sz);
 
-	fwrite(msgbuf, sizeof(msgbuf[0]), nbytes, stdout);
+	fwrite(msgbuf, sizeof(msgbuf[0]), sz + sizeof(sz), stdout);
 	
      }
 

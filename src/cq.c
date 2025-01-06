@@ -306,8 +306,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     sequence_num++;
     
     // size of msg (without prefix)
-    int seqmsg_size = sizeof(sequence_num) + bytes_read;
-    int sz = htons(seqmsg_size);
+    short seqmsg_size = sizeof(sequence_num) + bytes_read;
+    short sz = htons(seqmsg_size);
     
     // sequence # value in network byte order
     long seq = htonl(sequence_num);
@@ -341,14 +341,12 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     free(obuf);
     
-
     // populate TCP write buffer
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
 
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
    
-
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
       send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
