@@ -337,7 +337,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
-    printf("send %ld: pfx %lu msg %d bytes: %s\n", sequence_num, sizeof(sz), seqmsg_size, obuf + sizeof(seqmsg_size) + sizeof(seq));
+    printf("send # %ld: pfx %lu msg %d total %lu bytes: %s\n", sequence_num, sizeof(sz), seqmsg_size,
+	   (sizeof(sz) + seqmsg_size), obuf + sizeof(seqmsg_size) + sizeof(seq));
 
     free(obuf);
     
