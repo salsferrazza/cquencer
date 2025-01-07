@@ -11,14 +11,12 @@
 #include <stdlib.h>     // for EXIT_SUCCESS, EXIT_FAILURE, atexit(), exit()
 #include <string.h>     // for memcpy(), strncat(), strlen()
 #include <sys/socket.h> // for socket(), bind(), listen(), accept(), recv(), send()
+#include <time.h>       // for timespec, clock_gettime()
 #include <unistd.h>     // for close()
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include "./vector.h"
-
-// for determining system endianness
-#define is_bigendian() ( (∗(char∗)&i) == 0 )
 
 // the size of byte prefixes
 #define PREFIX_LENGTH sizeof(int)
@@ -53,6 +51,7 @@ typedef unsigned char byte;
 static bool accept_new_connection(void);
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
 
+static void now(char* datestr);
 static void cleanup(void);
 static void handle_sigint(int sig);
 
@@ -313,7 +312,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     long seq = htonl(sequence_num);
     
     // prefixed send buffer
-    char* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
+    byte* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
 
     // populate output buffer
     memcpy(obuf, &sz, sizeof(sz)); // length prefix 
@@ -337,7 +336,10 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
-    printf("send # %ld: pfx %lu msg %d total %lu bytes: %s\n", sequence_num, sizeof(sz), seqmsg_size,
+    char* curstamp[40];
+    now((char *) curstamp);
+    printf("%s send # %ld: pfx %lu msg %d total %lu bytes: %s\n",
+	   (char *) curstamp, sequence_num, sizeof(sz), seqmsg_size,
 	   (sizeof(sz) + seqmsg_size), obuf + sizeof(seqmsg_size) + sizeof(seq));
 
     free(obuf);
@@ -361,6 +363,16 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     fputs("handle_connection_io(): invalid state\n", stderr);
     exit(EXIT_FAILURE);
   }
+}
+
+static void now(char *datestr) {
+
+  struct timespec tv;
+  if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
+
+  int sec = tv.tv_sec;
+  sprintf(datestr, "%d", sec);
+
 }
 
 static void cleanup(void) {
