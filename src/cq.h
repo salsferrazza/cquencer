@@ -16,17 +16,21 @@ enum ConnectionState {
   CONN_STATE_END,
 };
 
-struct Connection {
+typedef struct {
   int fd;
   enum ConnectionState state;
   char read_buffer[BUFFER_LENGTH];
   char write_buffer[BUFFER_LENGTH];
-};
-typedef struct Connection Connection;
-
-typedef struct sockaddr_in sockaddr_in;
+} Connection;
 
 typedef unsigned char byte;
+typedef struct addrinfo addrinfo;
+typedef struct pollfd pollfd;
+typedef struct sockaddr sockaddr;
+typedef struct sockaddr_in sockaddr_in;
+typedef struct sockaddr_storage sockaddr_storage;
+typedef struct timespec timespec;
+typedef struct Vector Vector;
 
 static bool accept_new_connection(void);
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
@@ -36,5 +40,4 @@ static void cleanup(void);
 static void handle_sigint(int sig);
 
 // to store the address information of the server
-struct addrinfo *server_info = NULL;
-typedef struct addrinfo addrinfo;
+addrinfo *server_info = NULL;

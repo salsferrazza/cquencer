@@ -34,12 +34,14 @@ char sequence_chars[20];
 // UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
 
+char curstamp[40];
+
 // a vector of Connection structs to store the active connections
-struct Vector *connections;
+Vector *connections;
 
 // a vector of pollfd structs to store the file descriptors that we want to
 // poll for events
-struct Vector *poll_fds = NULL;
+Vector *poll_fds = NULL;
 
 int main(int argc, char *argv[]) {
 
@@ -131,7 +133,7 @@ int main(int argc, char *argv[]) {
 
   /** SET UP UDP MULTICAST FOR PUBLISHING **/
   
-  struct sockaddr_in multicast_addr;
+  sockaddr_in multicast_addr;
   memset(&multicast_addr, 0, sizeof(multicast_addr));
   multicast_addr.sin_family = AF_INET;
   multicast_addr.sin_addr.s_addr = inet_addr(send_group);
@@ -149,7 +151,7 @@ int main(int argc, char *argv[]) {
     vector_clear(poll_fds);
 
     // initialize the pollfd struct for the socket file descriptor
-    struct pollfd socket_pfd = {tcp_fd, POLLIN, 0};
+    pollfd socket_pfd = {tcp_fd, POLLIN, 0};
     vector_push(poll_fds, &socket_pfd);
 
     size_t num_connections = vector_length(connections);
@@ -175,7 +177,7 @@ int main(int argc, char *argv[]) {
       }
 
       // create pollfd struct and push it to the poll_fds vector
-      struct pollfd pfd = {
+      pollfd pfd = {
           .fd = conn->fd,
           .events = (conn->state == CONN_STATE_REQ) ? POLLIN : POLLOUT,
           .revents = 0,
@@ -197,7 +199,7 @@ int main(int argc, char *argv[]) {
     for (size_t i = 1; i < num_poll_fds; ++i) {
       // skipped the first pollfd because it's the socket file descriptor
 
-      struct pollfd *pfd = vector_get(poll_fds, i);
+      pollfd *pfd = vector_get(poll_fds, i);
       if (pfd->revents) {
         Connection *conn = vector_get(connections, i - 1);
 
@@ -210,7 +212,7 @@ int main(int argc, char *argv[]) {
     }
 
     // try to accept a new connection if the listening fd is active
-    if (((struct pollfd *)vector_get(poll_fds, 0))->revents & POLLIN) {
+    if (((pollfd *)vector_get(poll_fds, 0))->revents & POLLIN) {
       accept_new_connection();
     }
   }
@@ -220,10 +222,10 @@ int main(int argc, char *argv[]) {
 
 static bool accept_new_connection(void) {
   // accept
-  struct sockaddr_storage client_addr = {};
+  sockaddr_storage client_addr = {};
   socklen_t addr_size = sizeof client_addr;
 
-  int conn_fd = accept(tcp_fd, (struct sockaddr *)&client_addr, &addr_size);
+  int conn_fd = accept(tcp_fd, (sockaddr *)&client_addr, &addr_size);
   if (conn_fd == -1) {
     perror("accept()");
     return false;
@@ -288,7 +290,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 	    obuf,
 	    sizeof(obuf),
             0,
-            (struct sockaddr*) &multicast_addr,
+            (sockaddr*) &multicast_addr,
             sizeof(multicast_addr)
         );
     if (nbytes < 0) {
@@ -296,7 +298,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
-    char* curstamp[40];
     now((char *) curstamp);
     printf("%s send # %ld: pfx %lu msg %d total %lu bytes: %s\n",
 	   (char *) curstamp, sequence_num, sizeof(sz), seqmsg_size,
@@ -327,11 +328,11 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
 static void now(char *datestr) {
 
-  struct timespec tv;
+  timespec tv;
   if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
 
-  int sec = tv.tv_sec;
-  sprintf(datestr, "%d", sec);
+  int epoch = tv.tv_sec;
+  sprintf(datestr, "%d", epoch);
 
 }
 

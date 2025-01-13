@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-struct Vector;
+typedef struct Vector Vector;
 
 #define VECTOR_INIT_CAPACITY 8
 
