@@ -32,6 +32,7 @@ typedef struct sockaddr_storage sockaddr_storage;
 typedef struct timespec timespec;
 typedef struct Vector Vector;
 
+static void pack_msg(byte* output_buffer, byte* input_buffer, int length);
 static bool accept_new_connection(void);
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
 

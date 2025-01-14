@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
   }
 
   // loop through all the results and bind to the first we can
-  addrinfo *p;
+  addrinfo *p = NULL;
   for (p = server_info; p != NULL; p = p->ai_next) {
     // create a socket, which apparently is no good by itself because it's not
     // bound to an address and port number
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
   connections = vector_init(sizeof(Connection), 0);
 
   // initialize the poll_fds vector
-  poll_fds = vector_init(sizeof(struct pollfd), 0);
+  poll_fds = vector_init(sizeof(pollfd), 0);
 
   /** SET UP UDP MULTICAST FOR PUBLISHING **/
   
@@ -249,7 +249,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
   if (conn->state == CONN_STATE_REQ) {
 
     int bytes_read =
-        recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer) - 1, 0);
+        recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
     if (bytes_read == -1) {
       perror("recv()");
       conn->state = CONN_STATE_END;
@@ -264,25 +264,14 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     conn->read_buffer[bytes_read] = '\0';
 
     // increment sequence #
-    sequence_num++;
+    sequence_num++;   
     
-    // size of msg (without prefix)
+    // alloc prefixed send buffer
     short seqmsg_size = sizeof(sequence_num) + bytes_read;
-    short sz = htons(seqmsg_size);
-    
-    // sequence # value in network byte order
-    long seq = htonl(sequence_num);
-    
-    // prefixed send buffer
     byte* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
 
-    // populate output buffer
-    memcpy(obuf, &sz, sizeof(sz)); // length prefix 
-    memcpy(obuf + sizeof(sz), &seq, sizeof(seq)); // sequence # 
-    memcpy(obuf + sizeof(sz) + sizeof(seq), conn->read_buffer, bytes_read); // msg
-
-    // for response back to TCP client
-    sprintf(sequence_chars, "%ld", sequence_num);
+    // manufacture outbound message bytes
+    pack_msg(obuf, (byte*) conn->read_buffer, bytes_read);
 
     // send output buffer over UDP
     int nbytes = sendto(
@@ -298,18 +287,25 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
-    now((char *) curstamp);
-    printf("%s send # %ld: pfx %lu msg %d total %lu bytes: %s\n",
-	   (char *) curstamp, sequence_num, sizeof(sz), seqmsg_size,
-	   (sizeof(sz) + seqmsg_size), obuf + sizeof(seqmsg_size) + sizeof(seq));
+    // for response back to TCP client
+    sprintf(sequence_chars, "%ld", sequence_num);
 
-    free(obuf);
-    
     // populate TCP write buffer
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
 
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
+
+    // log
+    now((char *) curstamp);
+    printf("%s send # %ld: pfx %lu msg %d total %lu bytes: %s\n",
+	   (char *) curstamp, sequence_num, sizeof(seqmsg_size), seqmsg_size,
+	   (sizeof(seqmsg_size) + seqmsg_size),
+	   obuf + sizeof(seqmsg_size) + sizeof(sequence_num));
+
+    // free output message buffer
+    free(obuf);
+    obuf = NULL;
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
@@ -326,14 +322,29 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
   }
 }
 
-static void now(char *datestr) {
+static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
 
+  // sequence # value in network byte order
+  long seq = htonl(sequence_num);
+  // calc length prefix
+  short sz = htons(length + sizeof(seq));  
+
+  // append length
+  memcpy(output_buffer, &sz, sizeof(sz));
+  // append sequence number
+  memcpy(output_buffer + sizeof(sz),
+	 &seq, sizeof(seq)); // sequence # 
+  // append payload
+  memcpy(output_buffer + sizeof(sz) + sizeof(seq),
+	 input_buffer, length); // msg
+}
+
+static void now(char *datestr) {
   timespec tv;
   if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
 
   int epoch = tv.tv_sec;
   sprintf(datestr, "%d", epoch);
-
 }
 
 static void cleanup(void) {
