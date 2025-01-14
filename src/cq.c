@@ -44,10 +44,12 @@ Vector *connections;
 Vector *poll_fds = NULL;
 
 int main(int argc, char *argv[]) {
-
+   
   atexit(cleanup);
   signal(SIGPIPE, SIG_IGN);
   signal(SIGINT, handle_sigint);
+
+  setbuf(stdout, NULL); // unbuffer STDOUT
 
   char* listen_port = argv[1];
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
