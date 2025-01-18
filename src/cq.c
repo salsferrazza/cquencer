@@ -300,10 +300,9 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // log
     now((char *) curstamp);
-    printf("%s send # %ld: pfx %lu msg %d total %lu bytes: %s\n",
+    printf("%s send # %ld: pfx %lu msg %d total %lu bytes\n",
 	   (char *) curstamp, sequence_num, sizeof(seqmsg_size), seqmsg_size,
-	   (sizeof(seqmsg_size) + seqmsg_size),
-	   obuf + sizeof(seqmsg_size) + sizeof(sequence_num));
+	   (sizeof(seqmsg_size) + seqmsg_size));
 
     // free output message buffer
     free(obuf);

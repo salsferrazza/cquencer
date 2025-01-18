@@ -15,13 +15,32 @@ length-prefixed message framing.
 
 ## Rationale
 
-The `cquencer` authors are proponents of the [Sequencer Architecture](https://electronictradinghub.com/an-introduction-to-the-sequencer-world/]) commonly found in electronic trading systems. While patterns like event-sourcing have gained more traction in recent years, we are of the opinion that the industry would benefit from more awareeness around the benefits of sequencer architectures. 
+The `cquencer` authors are proponents of the [Sequencer
+Architecture](https://electronictradinghub.com/an-introduction-to-the-sequencer-world/])
+commonly found in electronic trading systems. While adjacent patterns
+such as event-sourcing have gained traction in recent years, we are of
+the opinion that the world could use more advocacy and open-source tooling to
+more clealry illustrate the benefits of sequencer architectures. 
 
-Current options tend to be commercial or attached to a larger solution that does much more than sequencing. Additionally, there is a heavy bias towards Java. There are no options for a simple network message sequencer unbundled from a larger or more vertically-specific package. 
+The currently available options tend to be commercial or attached to a
+larger solution that does much more than sequencing. Additionally,
+the existing tools bias toward Java as a host language. There are no
+clear options for a network message sequencer unbundled from a larger or more vertically-specific package. 
 
 Enter `cquencer`.
 
-`cq`, the sequencer binary, compiles to just over 50K. It's job: accept bytes over TCP, prepend a sequence number to those bytes, and send the sequenced bytes to a multicast group.
+`cq`, the sequencer binary, compiles to just over 50K. It's job:
+accept bytes over TCP, prepend a sequence number to those bytes, and
+send the sequenced bytes to its specified multicast group.
+
+## Protocol
+
+The `cquencer` accepts any data over its TCP port as a discrete
+message. Those bytes are then prepended with a sequence number of 8
+bytes and a length-prefix (inclusive of the prepended sequence) of 2
+bytes. Hence a submitted payload of 100 bytes becomes 110 bytes output
+over the UDP socket to the multicast group. 
+
 
 ## Building `cquencer`
 
@@ -116,3 +135,6 @@ client 6 disconnected
 -rw-r--r--  1 undefined  staff  25 Jan 13 22:48 tmp.bin
 ```
 
+## Acknowledgements
+
+## See also
