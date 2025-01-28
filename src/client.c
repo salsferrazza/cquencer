@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
   size_t line_cap = 0;
   ssize_t line_len;
 
-  printf("> ");
+  printf("? ");
   while ((line_len = getline(&line, &line_cap, stdin)) > 0) {
     line[line_len - 1] = '\0'; // to ignore the newline character at the end
 
@@ -83,8 +83,8 @@ int main(int argc, char* argv[]) {
 
     received_msg[bytes_read] = '\0'; // null-terminate the received message
 
-    printf("server says: %s\n", received_msg);
-    printf("> ");
+    printf("# %s\n", received_msg);
+    printf("? ");
   }
 
   return EXIT_SUCCESS;

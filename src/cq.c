@@ -330,13 +330,18 @@ static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
   // calc length prefix
   short sz = htons(length + sizeof(seq));  
 
+  int offset = 0;
   // append length
   memcpy(output_buffer, &sz, sizeof(sz));
+  offset += sizeof(sz);
+
   // append sequence number
-  memcpy(output_buffer + sizeof(sz),
+  memcpy(output_buffer + offset,
 	 &seq, sizeof(seq)); // sequence # 
+  offset += sizeof(seq);
+  
   // append payload
-  memcpy(output_buffer + sizeof(sz) + sizeof(seq),
+  memcpy(output_buffer + offset,
 	 input_buffer, length); // msg
 }
 
