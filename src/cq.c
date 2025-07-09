@@ -38,6 +38,7 @@ char curstamp[40];
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
+// std::vector<Connection> connections;
 
 // a vector of pollfd structs to store the file descriptors that we want to
 // poll for events
@@ -327,8 +328,9 @@ static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
 
   // sequence # value in network byte order
   long seq = htonl(sequence_num);
+  
   // calc length prefix
-  short sz = htons(length + sizeof(seq));  
+  short sz = htons(sizeof(seq) + length);  
 
   int offset = 0;
   // append length

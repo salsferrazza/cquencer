@@ -26,6 +26,7 @@
 #include <stdlib.h>
 
 #define MSGBUFSIZE 1024 + sizeof(int) + sizeof(long)
+#define SEQNUMSIZE sizeof(long)
 
 int main(int argc, char *argv[]) {
   
@@ -115,12 +116,20 @@ int main(int argc, char *argv[]) {
         }
         msgbuf[nbytes] = '\0';
 
+	int offset = 0;
 	// get size of message from length prefix
 	short sz;
 	memcpy(&sz, msgbuf, sizeof(sz));
 	sz = ntohs(sz);
+	offset += sizeof(sz);
 
-	fwrite(msgbuf, sizeof(msgbuf[0]), sz + sizeof(sz), stdout);
+	long seq;
+	memcpy(&seq, msgbuf + offset, SEQNUMSIZE);
+	seq = ntohl(seq);
+	
+	printf("seq: %ld\tmsg sz: %lu\n", seq, sz - SEQNUMSIZE);
+	
+	  //	fwrite(msgbuf, sizeof(msgbuf[0]), sz + sizeof(sz), stdout);
 	
      }
 
