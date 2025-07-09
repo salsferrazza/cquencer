@@ -26,7 +26,7 @@ int tcp_fd = -1;
 int udp_fd = -1;
 
 // the sequence number
-long sequence_num = 0;
+unsigned long sequence_num = 0;
 
 // temp storage of sequence number as string
 char sequence_chars[20];
