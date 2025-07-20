@@ -28,12 +28,14 @@ int udp_fd = -1;
 // the sequence number
 unsigned long sequence_num = 0;
 
-// temp storage of sequence number as string
+// temporary storage of sequence number
+// as a string for TCP client response
 char sequence_chars[20];
 
 // UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
 
+// string timestamp of latest sequenced message
 char curstamp[40];
 
 // a vector of Connection structs to store the active connections
@@ -60,6 +62,8 @@ int main(int argc, char *argv[]) {
   int rv;
 
   /** SET UP TCP SOCKETS FOR INBOUND MESSAGES **/
+
+  //  setup_tcp();
   
   addrinfo hints = {0};     // make sure the struct is empty
   hints.ai_family = AF_UNSPEC;     // don't care whether it's IPv4 or IPv6
@@ -124,7 +128,7 @@ int main(int argc, char *argv[]) {
     perror("listen()");
     return EXIT_FAILURE;
   }
-
+ 
   printf("Listening on port %s...\n", listen_port);
   printf("Current sequence number is %ld\n", sequence_num);
 
@@ -219,7 +223,6 @@ int main(int argc, char *argv[]) {
       accept_new_connection();
     }
   }
-
   return EXIT_SUCCESS;
 }
 
@@ -243,7 +246,8 @@ static bool accept_new_connection(void) {
   // add the connection to the connections vector
   vector_push(connections, &conn);
 
-  printf("client %d connected\n", conn_fd);
+  // FIXME: figure out logging more broadly
+  // printf("client %d connected\n", conn_fd);
 
   return true;
 }
@@ -258,7 +262,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       conn->state = CONN_STATE_END;
       return;
     } else if (bytes_read == 0) {
-      printf("client %d disconnected\n", conn->fd);
+      // FIXME: figure out logging more broadly
+      // printf("client %d disconnected\n", conn->fd);
       conn->state = CONN_STATE_END;
       return;
     }
@@ -269,6 +274,10 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // increment sequence #
     sequence_num++;   
     
+    // FIXME: why allocating and free'ing here when the same
+    //        buffer can be reused based on the maximum output
+    //        buffer length?
+
     // alloc prefixed send buffer
     short seqmsg_size = sizeof(sequence_num) + bytes_read;
     byte* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
