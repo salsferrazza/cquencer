@@ -135,7 +135,7 @@ The `listener` binary logs the sequence number and size of message payload to th
 
 ## Sequencer
 ```
- % bin/cq 3001 239.0.0.1 1234
+% bin/cq 3001 239.0.0.1 1234
 Listening on port 3001...
 Current sequence number is 0
 1753238653 send # 1: pfx 2 msg 20 total 22 bytes
