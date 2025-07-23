@@ -125,7 +125,7 @@ Current sequence number is 0
 
 The `listener` binary logs the sequence number and size of message payload to the console
 
-## Client
+#### Client
 ```
 % bin/client 3001
 ? hello world
@@ -133,7 +133,7 @@ The `listener` binary logs the sequence number and size of message payload to th
 ? 
 ```
 
-## Sequencer
+#### Sequencer
 ```
 % bin/cq 3001 239.0.0.1 1234
 Listening on port 3001...
@@ -142,7 +142,7 @@ Current sequence number is 0
 
 ```
 
-# Listener
+#### Listener
 ```
 % bin/listener 239.0.0.1 1234
 seq: 1	msg sz: 12
