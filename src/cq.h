@@ -5,10 +5,10 @@
 #define CONNECTION_BACKLOG 128
 
 // the maximum size of a message
-#define MESSAGE_LENGTH 1024
+#define MAX_MESSAGE_LENGTH 1024
 
 // the maximum size of a message (including prefix)
-#define BUFFER_LENGTH (PREFIX_LENGTH + MESSAGE_LENGTH + sizeof(long))
+#define BUFFER_LENGTH PREFIX_LENGTH + sizeof(long) + MAX_MESSAGE_LENGTH
 
 enum ConnectionState {
   CONN_STATE_REQ = 0,

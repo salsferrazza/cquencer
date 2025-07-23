@@ -46,14 +46,17 @@ over the UDP socket to the multicast group.
 
 ```
 % cd cquencer
-% make
+%  make
 mkdir -p bin
 rm -f bin/*
 gcc -Wall -Werror -o bin/cq src/cq.c src/vector.c
 gcc -Wall -Werror -o bin/listener src/listener.c
 gcc -Wall -Werror -o bin/client src/client.c
-undefined@Undefineds-MacBook-Pro cquencer % ls bin
-client		cq		listener
+undefined@Undefineds-MacBook-Pro cquencer % ls -l bin
+total 248
+-rwxr-xr-x  1 user  group  34472 Jul 22 22:32 client
+-rwxr-xr-x  1 user  group  52848 Jul 22 22:32 cq
+-rwxr-xr-x  1 user  group  34024 Jul 22 22:32 listener
 % 
 ```
 
@@ -63,8 +66,8 @@ client		cq		listener
 
 `cq <TCP listen port> <multicast group IP> <multicast group port>`
 
-- `listener` is an example multicast listener that sends all sequenced
-  messages as bytes to standard out.
+- `listener` is an example multicast listener that logs each message's
+sequence number and size
 
 `listener <multicast group IP> <multicast group port>`
 
@@ -76,9 +79,8 @@ client		cq		listener
 ## Example
 
 ### Start the sequencer on port 3001
-
 ```
-% cq 3001 239.0.0.1 1234
+bin/cq 3001 239.0.0.1 1234
 Listening on port 3001...
 Current sequence number is 0
 ```
@@ -87,52 +89,63 @@ Current sequence number is 0
 
 ```
 % bin/client 3001
-> this is a message
-server says: 1
->^C 
+? hello world
+# 1
+? 
 ```
 
 ### ... or use netcat to blast random bytes to the sequencer – disregarding the response
 
 ```
-% head -c$(( (RANDOM % 91) + 10 )) /dev/random| nc -c localhost 3001 
+% while true; do  head -c$(( (RANDOM % 91) + 10 )) /dev/random| nc -c localhost 3001 ; echo ; done
+1
+2
+3
+4
+5
+6
+^C
 ```
 
 ### Sequencer output
 
 ```
-% cq 3001 239.0.0.1 1234
+% bin/cq 3001 239.0.0.1 1234
 Listening on port 3001...
 Current sequence number is 0
-client 6 connected
-1736820576 send # 1: pfx 2 msg 26 total 28 bytes: this is a message
-client 7 connected
-1736820713 send # 2: pfx 2 msg 49 total 51 bytes: f??
-G'?"??|9 8?%,]??0??2??SL8~?e7???
-handle_client_message(): send(): Broken pipe
+1753238522 send # 1: pfx 2 msg 28 total 30 bytes
+1753238523 send # 2: pfx 2 msg 28 total 30 bytes
+1753238523 send # 3: pfx 2 msg 28 total 30 bytes
+1753238524 send # 4: pfx 2 msg 28 total 30 bytes
+1753238524 send # 5: pfx 2 msg 28 total 30 bytes
+1753238525 send # 6: pfx 2 msg 28 total 30 bytes
 ```
 
 ### Multicast listener
 
 The `listener` binary simply streams all bytes received from the specified multicast group over UDP and sends them to standard output. 
 
+## Client
 ```
-% cq 3001 239.0.0.1 1234 > cq.log &
-% bin/listener 239.0.0.1 1234 > tmp.bin &
-% ls -la tmp.bin 
--rw-r--r--  1 undefined  staff  0 Jan 
 % bin/client 3001
-> this is a message
-server says: 1
->^C
-undefined@Undefineds-MacBook-Pro cquencer % cat cq.log 
+? hello world
+# 1
+? 
+```
+
+## Sequencer
+```
+ % bin/cq 3001 239.0.0.1 1234
 Listening on port 3001...
 Current sequence number is 0
-client 6 connected
-1736826518 send # 1: pfx 2 msg 23 total 25 bytes: this a message
-client 6 disconnected
-% ls -al tmp.bin 
--rw-r--r--  1 undefined  staff  25 Jan 13 22:48 tmp.bin
+1753238653 send # 1: pfx 2 msg 20 total 22 bytes
+
+```
+
+# Listener
+```
+% bin/listener 239.0.0.1 1234
+seq: 1	msg sz: 12
 ```
 
 ## Acknowledgements

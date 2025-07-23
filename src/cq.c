@@ -15,7 +15,6 @@
 #include <unistd.h>     // for close()
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include "./vector.h"
 #include "./cq.h"
 
