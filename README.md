@@ -121,9 +121,9 @@ Current sequence number is 0
 1753238525 send # 6: pfx 2 msg 28 total 30 bytes
 ```
 
-### Multicast listener
+### Basic multicast listener
 
-The `listener` binary simply streams all bytes received from the specified multicast group over UDP and sends them to standard output. 
+The `listener` binary logs the sequence number and size of message payload to the console
 
 ## Client
 ```
@@ -146,6 +146,7 @@ Current sequence number is 0
 ```
 % bin/listener 239.0.0.1 1234
 seq: 1	msg sz: 12
+^C
 ```
 
 ## Acknowledgements
