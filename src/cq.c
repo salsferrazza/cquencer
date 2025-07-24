@@ -14,6 +14,7 @@
 #include <time.h>       // for timespec, clock_gettime()
 #include <unistd.h>     // for close()
 #include <netinet/in.h>
+#include <limits.h>
 #include <arpa/inet.h>
 #include "./vector.h"
 #include "./cq.h"
@@ -56,6 +57,13 @@ int main(int argc, char *argv[]) {
   char* listen_port = argv[1];
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
+
+  StartupAnnouncement announce;
+  announce.ip_port = atoi(listen_port);
+  announce.current_sequence_number = sequence_num;
+  announce.maximum_sequence_number = ULONG_MAX;
+  announce.maximum_message_size = MAX_MESSAGE_LENGTH;
+  announce.sequence_number_size = sizeof(sequence_num);
 
   // to store the return value of various function calls for error checking
   int rv;
@@ -116,6 +124,8 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  // memcpy(announce->ip_address, p->ai_addr, p->ai_addrlen);
+
   // free server_info because we don't need it anymore
   freeaddrinfo(server_info);
   server_info = NULL; // to avoid dangling pointer (& double free at cleanup())
@@ -131,6 +141,8 @@ int main(int argc, char *argv[]) {
   printf("Listening on port %s...\n", listen_port);
   printf("Current sequence number is %ld\n", sequence_num);
 
+
+  
   // initialize connections vector
   connections = vector_init(sizeof(Connection), 0);
 
@@ -149,6 +161,19 @@ int main(int argc, char *argv[]) {
   if (udp_fd < 0) {
     perror("socket()");
     return 1;
+  }
+
+  int nbytes = sendto(
+            udp_fd,
+	    (byte *) &announce,
+	    sizeof(announce),
+            0,
+            (sockaddr*) &multicast_addr,
+            sizeof(multicast_addr)
+        );
+
+  if (nbytes < 0) {
+    perror("sendto");
   }
   
   // the event loop
@@ -331,6 +356,16 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     exit(EXIT_FAILURE);
   }
 }
+
+//static void announce(void) {
+  // Send multicast message:
+  // 
+  // current_sequence_number: 0
+  // maximum_message_length: ULONG_MAX
+  // sequence_number_byte_length: sizeof(ULONG_MAX)
+  // tcp_host: 127.0.0.1
+  // tcp_port: 3001
+//}
 
 static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
 
