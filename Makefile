@@ -3,7 +3,7 @@ flags=-Wall -Werror
 src=src
 bin=bin
 
-all: setup clean $(bin)/cq $(bin)/listener $(bin)/client
+all: setup clean $(bin)/cq $(bin)/destn $(bin)/sendr
 
 setup:
 	mkdir -p $(bin)
@@ -14,8 +14,8 @@ clean:
 $(bin)/cq: $(src)/cq.c $(src)/vector.c
 	$(cc) $(flags) -o $@ $^
 
-$(bin)/listener: $(src)/listener.c
+$(bin)/destn: $(src)/destn.c
 	$(cc) $(flags) -o $@ $^
 
-$(bin)/client: $(src)/client.c
+$(bin)/sendr: $(src)/sendr.c
 	$(cc) $(flags) -o $@ $^

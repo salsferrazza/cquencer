@@ -16,12 +16,26 @@ enum ConnectionState {
   CONN_STATE_END,
 };
 
+typedef unsigned char byte;
+typedef struct addrinfo addrinfo;
+typedef struct pollfd pollfd;
+typedef struct sockaddr sockaddr;
+typedef struct sockaddr_in sockaddr_in;
+typedef struct sockaddr_storage sockaddr_storage;
+typedef struct timespec timespec;
+typedef struct Vector Vector;
+
 typedef struct {
   int fd;
   enum ConnectionState state;
   char read_buffer[BUFFER_LENGTH];
   char write_buffer[BUFFER_LENGTH];
 } Connection;
+
+typedef struct {
+  unsigned long sequence_number;
+  byte message_bytes[MAX_MESSAGE_LENGTH];
+} SequencedMessage;
 
 typedef struct {
   char* ip_address;
@@ -31,15 +45,6 @@ typedef struct {
   unsigned long maximum_sequence_number;
   unsigned long current_sequence_number;
 } StartupAnnouncement;
-
-typedef unsigned char byte;
-typedef struct addrinfo addrinfo;
-typedef struct pollfd pollfd;
-typedef struct sockaddr sockaddr;
-typedef struct sockaddr_in sockaddr_in;
-typedef struct sockaddr_storage sockaddr_storage;
-typedef struct timespec timespec;
-typedef struct Vector Vector;
 
 static void pack_msg(byte* output_buffer, byte* input_buffer, int length);
 static bool accept_new_connection(void);

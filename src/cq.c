@@ -58,13 +58,15 @@ int main(int argc, char *argv[]) {
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
 
+  /*
   StartupAnnouncement announce;
   announce.ip_port = atoi(listen_port);
   announce.current_sequence_number = sequence_num;
   announce.maximum_sequence_number = ULONG_MAX;
   announce.maximum_message_size = MAX_MESSAGE_LENGTH;
   announce.sequence_number_size = sizeof(sequence_num);
-
+  */
+  
   // to store the return value of various function calls for error checking
   int rv;
 
@@ -124,8 +126,11 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  // memcpy(announce->ip_address, p->ai_addr, p->ai_addrlen);
-
+  //char* ipbuf = malloc(p->ai_addrlen + 1);
+  //  memcpy(&ipbuf, p->ai_addr, p->ai_addrlen);
+  //  announce.ip_address = ipbuf;
+  
+  
   // free server_info because we don't need it anymore
   freeaddrinfo(server_info);
   server_info = NULL; // to avoid dangling pointer (& double free at cleanup())
@@ -140,8 +145,6 @@ int main(int argc, char *argv[]) {
  
   printf("Listening on port %s...\n", listen_port);
   printf("Current sequence number is %ld\n", sequence_num);
-
-
   
   // initialize connections vector
   connections = vector_init(sizeof(Connection), 0);
@@ -162,7 +165,7 @@ int main(int argc, char *argv[]) {
     perror("socket()");
     return 1;
   }
-
+  /*
   int nbytes = sendto(
             udp_fd,
 	    (byte *) &announce,
@@ -175,6 +178,7 @@ int main(int argc, char *argv[]) {
   if (nbytes < 0) {
     perror("sendto");
   }
+  */
   
   // the event loop
   while (true) {
