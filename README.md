@@ -49,14 +49,14 @@ over the UDP socket to the multicast group.
 mkdir -p bin
 rm -f bin/*
 gcc -Wall -Werror -o bin/cq src/cq.c src/vector.c
-gcc -Wall -Werror -o bin/listener src/listener.c
-gcc -Wall -Werror -o bin/client src/client.c
-undefined@Undefineds-MacBook-Pro cquencer % ls -l bin
+gcc -Wall -Werror -o bin/destn src/destn.c
+gcc -Wall -Werror -o bin/sendr src/sendr.c
+% ls -l bin
 total 248
--rwxr-xr-x  1 user  group  34472 Jul 22 22:32 client
--rwxr-xr-x  1 user  group  52848 Jul 22 22:32 cq
--rwxr-xr-x  1 user  group  34024 Jul 22 22:32 listener
-% 
+-rwxr-xr-x  1 sal  staff  52848 Aug  3 16:26 cq
+-rwxr-xr-x  1 sal  staff  34024 Aug  3 16:26 destn
+-rwxr-xr-x  1 sal  staff  34472 Aug  3 16:26 sendr
+%
 ```
 
 ## Usage
@@ -65,15 +65,15 @@ total 248
 
 `cq <TCP listen port> <multicast group IP> <multicast group port>`
 
-- `listener` is an example multicast listener that logs each message's
+- `destn` is an example multicast destination that logs each message's
 sequence number and size
 
-`listener <multicast group IP> <multicast group port>`
+`destn <multicast group IP> <multicast group port>`
 
-- `client` is a shell that allows for interactive submission of
+- `sendr` is a shell that allows for interactive submission of
   plain-text messages.
 
-`client <IP of sequencer process> <port of sequencer process>` 
+`sendr <IP of sequencer process> <port of sequencer process>` 
 
 ## Example
 
@@ -87,7 +87,7 @@ Current sequence number is 0
 ### Use client to send a message and receive sequence number reply
 
 ```
-% bin/client 3001
+% bin/sendr 3001
 ? hello world
 # 1
 ? 
@@ -120,13 +120,13 @@ Current sequence number is 0
 1753238525 send # 6: pfx 2 msg 28 total 30 bytes
 ```
 
-### Basic multicast listener
+### Basic multicast destination
 
-The `listener` binary logs the sequence number and size of message payload to the console
+The `destn` binary logs the sequence number and size of message payload to the console
 
-#### Client
+#### Sender
 ```
-% bin/client 3001
+% bin/sendr 3001
 ? hello world
 # 1
 ? 
@@ -141,9 +141,9 @@ Current sequence number is 0
 
 ```
 
-#### Listener
+#### Destination
 ```
-% bin/listener 239.0.0.1 1234
+% bin/destn 239.0.0.1 1234
 seq: 1	msg sz: 12
 ^C
 ```
