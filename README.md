@@ -1,13 +1,12 @@
 # cquencer
-_Barebones unicast-multicast message sequencing_
+_A central sequence number server_
 
 ## Synopsis
 
-The `cquencer` is an ultra barebones unicast-muilticast network message sequencer,
-written in C. 
+The `cquencer` is a standalone central sequence number server, embodying the "Fixed Sequencer" 
+ordering mechanism described by [Défago, et al](https://infoscience.epfl.ch/server/api/core/bitstreams/068f8add-50ce-4216-b750-3cde412ee397/content) (2004). 
 
-`cquencer` adheres to a simple protocol and is designed to be
-payload-agnostic. It listens for connections over TCP on a local
+`cquencer` adheres to a simple protocol and is payload-agnostic. It listens for connections over TCP on a local
 address and port. Each message received over that port is assigned a
 sequence number and both the sequence number and the original message
 payload are published to the specified multicast group with UDP and
