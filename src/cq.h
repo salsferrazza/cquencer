@@ -2,10 +2,10 @@
 #define PREFIX_LENGTH sizeof(int)
 
 // the max number of connections that can wait in the queue
-#define CONNECTION_BACKLOG 128
+#define CONNECTION_BACKLOG 512
 
 // the maximum size of a message
-#define MAX_MESSAGE_LENGTH 1024
+#define MAX_MESSAGE_LENGTH 1440
 
 // the maximum size of a message (including prefix)
 #define BUFFER_LENGTH PREFIX_LENGTH + sizeof(long) + MAX_MESSAGE_LENGTH
