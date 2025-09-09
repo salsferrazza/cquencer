@@ -11,7 +11,7 @@ setup:
 clean:
 	rm -f $(bin)/*
 
-$(bin)/cq: $(src)/cq.c $(src)/vector.c
+$(bin)/cq: $(src)/cq.c $(src)/vector.c $(src)/netstring.c
 	$(cc) $(flags) -o $@ $^
 
 $(bin)/destn: $(src)/destn.c

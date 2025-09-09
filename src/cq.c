@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <limits.h>
 #include <arpa/inet.h>
+#include "./netstring.h"
 #include "./vector.h"
 #include "./cq.h"
 
@@ -126,11 +127,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  //char* ipbuf = malloc(p->ai_addrlen + 1);
-  //  memcpy(&ipbuf, p->ai_addr, p->ai_addrlen);
-  //  announce.ip_address = ipbuf;
-  
-  
   // free server_info because we don't need it anymore
   freeaddrinfo(server_info);
   server_info = NULL; // to avoid dangling pointer (& double free at cleanup())
@@ -299,8 +295,18 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
 
+    printf("read %i bytes\n", bytes_read);
+    
+    //
     // increment sequence #
     sequence_num++;   
+
+    sprintf(sequence_chars, "%ld", sequence_num);
+
+    char* seq_buf = malloc(netstring_buffer_size(sizeof(sequence_chars)));
+
+    netstring_encode_new((char **) &seq_buf, sequence_chars, sizeof(sequence_chars));
+
     
     // FIXME: why allocating and free'ing here when the same
     //        buffer can be reused based on the maximum output
@@ -310,9 +316,14 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     short seqmsg_size = sizeof(sequence_num) + bytes_read;
     byte* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
 
+    netstring_encode_new((char **) &obuf, conn->read_buffer, bytes_read - 1);
+    
     // manufacture outbound message bytes
-    pack_msg(obuf, (byte*) conn->read_buffer, bytes_read);
+    //    pack_msg(obuf, (byte*) conn->read_buffer, bytes_read);
 
+    printf("%s\n", seq_buf);
+    printf("%s\n", obuf);
+    
     // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
@@ -326,9 +337,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       perror("sendto");
       return;
     }
-
-    // for response back to TCP client
-    sprintf(sequence_chars, "%ld", sequence_num);
 
     // populate TCP write buffer
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
@@ -344,6 +352,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // free output message buffer
     free(obuf);
+    free(seq_buf);
     obuf = NULL;
    
   } else if (conn->state == CONN_STATE_RES) {    
@@ -370,7 +379,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
   // tcp_host: 127.0.0.1
   // tcp_port: 3001
 //}
-
+/**
 static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
 
   // sequence # value in network byte order
@@ -393,6 +402,7 @@ static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
   memcpy(output_buffer + offset,
 	 input_buffer, length); // msg
 }
+*/
 
 static void now(char *datestr) {
   timespec tv;

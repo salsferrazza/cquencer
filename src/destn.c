@@ -21,9 +21,11 @@
     #include <time.h>
 #endif
 
+#include <stdbool.h>    // for true/false, duh
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "./netstring.h"
 
 #define MSGBUFSIZE 1024 + sizeof(int) + sizeof(long)
 #define SEQNUMSIZE sizeof(long)
@@ -98,7 +100,7 @@ int main(int argc, char *argv[]) {
     }
 
     // now just enter a read-print loop
-    while (1) {
+    while (true) {
         char msgbuf[MSGBUFSIZE];
         int addrlen = sizeof(addr);
         int nbytes = recvfrom(
@@ -116,6 +118,12 @@ int main(int argc, char *argv[]) {
         }
         msgbuf[nbytes] = '\0';
 
+	size_t payload_len;	
+	char* payload[nbytes];
+
+	int rv = netstring_read(msgbuf, nbytes, (char **)  &payload, &payload_len);
+	
+	/**
 	int offset = 0;
 	// get size of message from length prefix
 	short sz;
@@ -126,10 +134,9 @@ int main(int argc, char *argv[]) {
 	long seq;
 	memcpy(&seq, msgbuf + offset, SEQNUMSIZE);
 	seq = ntohl(seq);
+	*/
 	
 	printf("seq: %ld\tmsg sz: %lu\n", seq, sz - SEQNUMSIZE);
-	
-	  //	fwrite(msgbuf, sizeof(msgbuf[0]), sz + sizeof(sz), stdout);
 	
      }
 
