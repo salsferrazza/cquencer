@@ -21,7 +21,7 @@ length-prefixed message framing.
 The `cquencer` authors are proponents of the [Sequencer
 Architecture](https://electronictradinghub.com/an-introduction-to-the-sequencer-world/])
 commonly found in electronic trading systems. While adjacent patterns
-such as event-sourcing have gained traction in recent years, we are of
+such as [event-sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) have gained traction in recent years, we are of
 the opinion that the world could use more advocacy and open-source tooling to
 more clealry illustrate the benefits of sequencer architectures. 
 
