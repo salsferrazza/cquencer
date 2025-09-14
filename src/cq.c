@@ -31,7 +31,7 @@ unsigned long sequence_num = 0;
 
 // temporary storage of sequence number
 // as a string for TCP client response
-char sequence_chars[20];
+char sequence_chars[20]; // 20 is maximum size of unsigned long as string
 
 // UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
@@ -276,6 +276,40 @@ static bool accept_new_connection(void) {
   return true;
 }
 
+int pack_msg(const char *input_buffer,
+	     char *output_buffer) {
+
+  if (!input_buffer || !output_buffer) {
+    return -1;
+  }
+
+  // Convert the unsigned long to a string.
+  char seq_str[21]; // Max for unsigned long (20 digits) + null terminator.
+  int seq_len = sprintf(seq_str, "%lu", sequence_num);
+  if (seq_len < 0) {
+    return -1;
+  }
+
+  // Calculate lengths for inner netstrings.
+  size_t input_len = strlen(input_buffer);
+  size_t seq_netstring_len = seq_len + 1 + 1; // len(seq_str) + ':' + ','
+  size_t input_netstring_len = input_len + 1 + 1; // len(input_buffer) + ':' + ','
+    
+  // Calculate the total length of the inner contents for the outer netstring.
+  // [seq_len]:[sequence_string],[input_len]:[input_buffer],
+  size_t inner_content_len = seq_netstring_len + input_netstring_len;
+    
+  // Write the final netstring to the output buffer.
+  // The format is [outer_len]:[inner_content],
+  int total_written = sprintf(output_buffer, "%zu:%d:%s,%zu:%s,,",
+			      inner_content_len, seq_len, seq_str, input_len, input_buffer);
+
+  if (total_written < 0) {
+    return -1;
+  }
+  return total_written;
+}
+
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr) {
   if (conn->state == CONN_STATE_REQ) {
 
@@ -300,35 +334,22 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     //
     // increment sequence #
     sequence_num++;   
-
     sprintf(sequence_chars, "%ld", sequence_num);
-
-    char* seq_buf = malloc(netstring_buffer_size(sizeof(sequence_chars)));
-
-    netstring_encode_new((char **) &seq_buf, sequence_chars, sizeof(sequence_chars));
 
     
     // FIXME: why allocating and free'ing here when the same
     //        buffer can be reused based on the maximum output
     //        buffer length?
 
-    // alloc prefixed send buffer
-    short seqmsg_size = sizeof(sequence_num) + bytes_read;
-    byte* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
-
-    netstring_encode_new((char **) &obuf, conn->read_buffer, bytes_read - 1);
+    char* obuf = malloc(netstring_buffer_size(bytes_read + sizeof(sequence_chars)));
     
-    // manufacture outbound message bytes
-    //    pack_msg(obuf, (byte*) conn->read_buffer, bytes_read);
+    int msg_total = pack_msg(conn->read_buffer, obuf);
 
-    printf("%s\n", seq_buf);
-    printf("%s\n", obuf);
-    
     // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
 	    obuf,
-	    sizeof(obuf),
+	    msg_total,
             0,
             (sockaddr*) &multicast_addr,
             sizeof(multicast_addr)
@@ -346,13 +367,12 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // log
     now((char *) curstamp);
-    printf("%s send # %ld: pfx %lu msg %d total %lu bytes\n",
-	   (char *) curstamp, sequence_num, sizeof(seqmsg_size), seqmsg_size,
-	   (sizeof(seqmsg_size) + seqmsg_size));
+    printf("%s send # %ld: total %d bytes\n",
+	   (char *) curstamp, sequence_num,
+	   msg_total);
 
     // free output message buffer
     free(obuf);
-    free(seq_buf);
     obuf = NULL;
    
   } else if (conn->state == CONN_STATE_RES) {    
@@ -369,6 +389,12 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     exit(EXIT_FAILURE);
   }
 }
+
+
+
+
+
+
 
 //static void announce(void) {
   // Send multicast message:

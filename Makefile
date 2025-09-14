@@ -14,7 +14,7 @@ clean:
 $(bin)/cq: $(src)/cq.c $(src)/vector.c $(src)/netstring.c
 	$(cc) $(flags) -o $@ $^
 
-$(bin)/destn: $(src)/destn.c
+$(bin)/destn: $(src)/destn.c $(src)/netstring.c
 	$(cc) $(flags) -o $@ $^
 
 $(bin)/sendr: $(src)/sendr.c

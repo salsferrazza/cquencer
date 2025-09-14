@@ -119,9 +119,14 @@ int main(int argc, char *argv[]) {
         msgbuf[nbytes] = '\0';
 
 	size_t payload_len;	
-	char* payload[nbytes];
+	char* payload = malloc(nbytes);
 
-	int rv = netstring_read(msgbuf, nbytes, (char **)  &payload, &payload_len);
+	netstring_read(msgbuf, nbytes, (char **)  &payload, &payload_len);
+
+	size_t message_len;
+	char* seq = malloc(payload_len);
+	  
+	netstring_read(payload, payload_len, (char **) &seq, &message_len);
 	
 	/**
 	int offset = 0;
@@ -136,7 +141,11 @@ int main(int argc, char *argv[]) {
 	seq = ntohl(seq);
 	*/
 	
-	printf("seq: %ld\tmsg sz: %lu\n", seq, sz - SEQNUMSIZE);
+	printf("pay: %s\n", payload);
+
+	free(payload);
+	free(seq);
+	  
 	
      }
 
