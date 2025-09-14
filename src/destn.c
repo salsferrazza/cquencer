@@ -118,6 +118,8 @@ int main(int argc, char *argv[]) {
         }
         msgbuf[nbytes] = '\0';
 
+	printf("buf: %s\n", msgbuf);
+
 	size_t payload_len;	
 	char* payload = malloc(nbytes);
 
@@ -141,7 +143,6 @@ int main(int argc, char *argv[]) {
 	seq = ntohl(seq);
 	*/
 	
-	printf("pay: %s\n", payload);
 
 	free(payload);
 	free(seq);
