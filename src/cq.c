@@ -351,28 +351,22 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     conn->read_buffer[bytes_read] = '\0';
 
     printf("read %i bytes\n", bytes_read);
-    
-    //
+
     // increment sequence #
     sequence_num++;   
+
+    // save string representation of the sequence # 
     sprintf(sequence_chars, "%ld", sequence_num);
 
-    // manufacture output
+    // manufacture output message
     int seq_len = strlen(sequence_chars);
     int seq_netstring_len = seq_len + strlen(":,") + 1;
     int payload_netstring_len = bytes_read + strlen(":,") + 1;
     int total_msg_len = payload_netstring_len + seq_netstring_len;
     char obuf[total_msg_len + strlen(":,") + 1];
 
-    sprintf(obuf, "%d:%d:%s,%d:%s,,", total_msg_len,  seq_len, sequence_chars, bytes_read, conn->read_buffer); 
+    sprintf(obuf, "%d:%d:%s,%d:%s,,", total_msg_len, seq_len, sequence_chars, bytes_read, conn->read_buffer); 
   
-    // FIXME: why allocating and free'ing here when the same
-    //        buffer can be reused based on the maximum output
-    //        buffer length?
-    //    char* obuf = malloc(netstring_buffer_size(bytes_read + strlen(sequence_chars)));
-    
-    //    int msg_total = pack_msg(conn->read_buffer, obuf);
-
     // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
@@ -398,10 +392,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     printf("%s send # %ld: total %d bytes\n",
 	   (char *) curstamp, sequence_num,
 	   seq_len);
-
-    // free output message buffer
-    //    free(obuf);
-    //obuf = NULL;
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
