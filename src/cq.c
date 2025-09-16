@@ -161,20 +161,6 @@ int main(int argc, char *argv[]) {
     perror("socket()");
     return 1;
   }
-  /*
-  int nbytes = sendto(
-            udp_fd,
-	    (byte *) &announce,
-	    sizeof(announce),
-            0,
-            (sockaddr*) &multicast_addr,
-            sizeof(multicast_addr)
-        );
-
-  if (nbytes < 0) {
-    perror("sendto");
-  }
-  */
   
   // the event loop
   while (true) {
@@ -275,62 +261,7 @@ static bool accept_new_connection(void) {
 
   return true;
 }
-/**
-int create_nested_netstring(unsigned long sequence, const char *input_buffer, char *output_buffer) {
-    if (!input_buffer || !output_buffer) {
-        return -1;
-    }
 
-    // Convert the unsigned long to a string.
-    char seq_str[21]; // Max for unsigned long (20 digits) + null terminator.
-    int seq_len = sprintf(seq_str, "%lu", sequence);
-    if (seq_len < 0) {
-        return -1;
-    }
-
-    // Calculate lengths for inner netstrings.
-    size_t input_len = strlen(input_buffer);
-    //    size_t seq_netstring_len = seq_len + 1 + 1; // len(seq_str) + ':' + ','
-    // size_t input_netstring_len = input_len + 1 + 1; // len(input_buffer) + ':' + ','
-    
-    // Calculate the total length of the inner contents for the outer netstring.
-    // [seq_len]:[sequence_string],[input_len]:[input_buffer],
-    size_t inner_content_len = seq_netstring_len + input_netstring_len;
-    
-    // Write the final netstring to the output buffer.
-    // The format is [outer_len]:[inner_content],
-    int total_written = sprintf(output_buffer, "%zu:%d:%s,%zu:%s,,",
-                                inner_content_len, seq_len, seq_str, input_len, input_buffer);
-
-    if (total_written < 0) {
-        return -1;
-    }
-
-    return total_written;
-}
-
-int pack_msg(const char *input_buffer,
-	     char *output_buffer) {
-
-  if (!input_buffer || !output_buffer) {
-    return -1;
-  }
-
-  //char* seq_str[21];
-  //  size_t seq_netstring_len = netstring_buffer_size(sprintf(seq_str, "%lu", sequence_num));
-  //  size_t payload_netstring_len = netstring_buffer_size(strlen(input_buffer));
-
-  
-  //  int written = create_nested_netstring(sequence_num, input_buffer, output_buffer);
-
-  //  if (written < 0) {
-  //perror("netstring");
-    //}
-
-  //return written;
-    
-}
-*/
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr) {
   if (conn->state == CONN_STATE_REQ) {
 
@@ -407,46 +338,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     exit(EXIT_FAILURE);
   }
 }
-
-
-
-
-
-
-
-//static void announce(void) {
-  // Send multicast message:
-  // 
-  // current_sequence_number: 0
-  // maximum_message_length: ULONG_MAX
-  // sequence_number_byte_length: sizeof(ULONG_MAX)
-  // tcp_host: 127.0.0.1
-  // tcp_port: 3001
-//}
-/**
-static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
-
-  // sequence # value in network byte order
-  long seq = htonl(sequence_num);
-  
-  // calc length prefix
-  short sz = htons(sizeof(seq) + length);  
-
-  int offset = 0;
-  // append length
-  memcpy(output_buffer, &sz, sizeof(sz));
-  offset += sizeof(sz);
-
-  // append sequence number
-  memcpy(output_buffer + offset,
-	 &seq, sizeof(seq)); // sequence # 
-  offset += sizeof(seq);
-  
-  // append payload
-  memcpy(output_buffer + offset,
-	 input_buffer, length); // msg
-}
-*/
 
 static void now(char *datestr) {
   timespec tv;
