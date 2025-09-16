@@ -120,10 +120,13 @@ int main(int argc, char *argv[]) {
 
 	printf("buf: %s\n", msgbuf);
 
-	size_t payload_len;	
+	size_t payload_len;
 	char* payload = malloc(nbytes);
 
-	netstring_read(msgbuf, nbytes, (char **)  &payload, &payload_len);
+	int read = netstring_read(msgbuf, nbytes, (char **)  &payload, &payload_len);
+
+	printf("read %d into netstring\n", read);	
+	printf("buf: %s\n", payload);
 
 	size_t message_len;
 	char* seq = malloc(payload_len);
