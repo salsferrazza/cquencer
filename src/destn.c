@@ -1,12 +1,8 @@
 //
-// Simple listener.c program for UDP multicast
+// UDP multicast listener that echoes received data to `stdout`
 //
 // Adapted from:
 // http://ntrg.cs.tcd.ie/undergrad/4ba2/multicast/antony/example.html
-//
-// Changes:
-// * Compiles for Windows as well as Linux
-// * Takes the port and group on the command line
 //
 
 #ifdef _WIN32
@@ -21,9 +17,11 @@
     #include <time.h>
 #endif
 
+#include <stdbool.h>    // for true/false, duh
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "./netstring.h"
 
 #define MSGBUFSIZE 1024 + sizeof(int) + sizeof(long)
 #define SEQNUMSIZE sizeof(long)
@@ -31,8 +29,8 @@
 int main(int argc, char *argv[]) {
   
     if (argc != 3) {
-       printf("Command line args should be multicast group and port\n");
-       printf("(e.g. for SSDP, `listener 239.255.255.250 1900`)\n");
+       printf("Usage: destn <IP> <PORT>\n");
+       printf("(e.g. `destn 239.0.0.1 1234`)\n");
        return 1;
     }
 
@@ -97,8 +95,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // now just enter a read-print loop
-    while (1) {
+    while (true) {
         char msgbuf[MSGBUFSIZE];
         int addrlen = sizeof(addr);
         int nbytes = recvfrom(
@@ -114,24 +111,10 @@ int main(int argc, char *argv[]) {
             perror("recvfrom");
             return 1;
         }
-        msgbuf[nbytes] = '\0';
-
-	int offset = 0;
-	// get size of message from length prefix
-	short sz;
-	memcpy(&sz, msgbuf, sizeof(sz));
-	sz = ntohs(sz);
-	offset += sizeof(sz);
-
-	long seq;
-	memcpy(&seq, msgbuf + offset, SEQNUMSIZE);
-	seq = ntohl(seq);
 	
-	printf("seq: %ld\tmsg sz: %lu\n", seq, sz - SEQNUMSIZE);
-	
-	  //	fwrite(msgbuf, sizeof(msgbuf[0]), sz + sizeof(sz), stdout);
-	
-     }
+	msgbuf[nbytes] = '\0';
+	fprintf(stdout, "%s", msgbuf);
+    }
 
 #ifdef _WIN32
     //

@@ -1,3 +1,8 @@
+//
+// cq  - a central sequence number server that receives unsequenced
+//       messages over TCP and sends sequenced UDP packets to 
+//       the specified multicast address
+
 // feature test macro for getaddrinfo() from man pages
 #define _POSIX_C_SOURCE 200112L
 
@@ -16,6 +21,7 @@
 #include <netinet/in.h>
 #include <limits.h>
 #include <arpa/inet.h>
+#include "./netstring.h"
 #include "./vector.h"
 #include "./cq.h"
 
@@ -30,7 +36,7 @@ unsigned long sequence_num = 0;
 
 // temporary storage of sequence number
 // as a string for TCP client response
-char sequence_chars[20];
+char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 
 // UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
@@ -58,21 +64,8 @@ int main(int argc, char *argv[]) {
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
 
-  /*
-  StartupAnnouncement announce;
-  announce.ip_port = atoi(listen_port);
-  announce.current_sequence_number = sequence_num;
-  announce.maximum_sequence_number = ULONG_MAX;
-  announce.maximum_message_size = MAX_MESSAGE_LENGTH;
-  announce.sequence_number_size = sizeof(sequence_num);
-  */
-  
   // to store the return value of various function calls for error checking
   int rv;
-
-  /** SET UP TCP SOCKETS FOR INBOUND MESSAGES **/
-
-  //  setup_tcp();
   
   addrinfo hints = {0};     // make sure the struct is empty
   hints.ai_family = AF_UNSPEC;     // don't care whether it's IPv4 or IPv6
@@ -126,11 +119,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  //char* ipbuf = malloc(p->ai_addrlen + 1);
-  //  memcpy(&ipbuf, p->ai_addr, p->ai_addrlen);
-  //  announce.ip_address = ipbuf;
-  
-  
   // free server_info because we don't need it anymore
   freeaddrinfo(server_info);
   server_info = NULL; // to avoid dangling pointer (& double free at cleanup())
@@ -152,7 +140,7 @@ int main(int argc, char *argv[]) {
   // initialize the poll_fds vector
   poll_fds = vector_init(sizeof(pollfd), 0);
 
-  /** SET UP UDP MULTICAST FOR PUBLISHING **/
+  /** SET UP MULTICAST FOR PUBLISHING **/
   
   sockaddr_in multicast_addr;
   memset(&multicast_addr, 0, sizeof(multicast_addr));
@@ -165,22 +153,9 @@ int main(int argc, char *argv[]) {
     perror("socket()");
     return 1;
   }
-  /*
-  int nbytes = sendto(
-            udp_fd,
-	    (byte *) &announce,
-	    sizeof(announce),
-            0,
-            (sockaddr*) &multicast_addr,
-            sizeof(multicast_addr)
-        );
-
-  if (nbytes < 0) {
-    perror("sendto");
-  }
-  */
   
   // the event loop
+
   while (true) {
     // clear the poll_fds vector
     vector_clear(poll_fds);
@@ -213,9 +188,9 @@ int main(int argc, char *argv[]) {
 
       // create pollfd struct and push it to the poll_fds vector
       pollfd pfd = {
-          .fd = conn->fd,
-          .events = (conn->state == CONN_STATE_REQ) ? POLLIN : POLLOUT,
-          .revents = 0,
+        .fd = conn->fd,
+        .events = (conn->state == CONN_STATE_REQ) ? POLLIN : POLLOUT,
+        .revents = 0,
       };
       pfd.events = pfd.events | POLLERR;
       vector_push(poll_fds, &pfd);
@@ -267,15 +242,12 @@ static bool accept_new_connection(void) {
 
   // creating the struct Conn
   Connection conn = {
-      .fd = conn_fd,
-      .state = CONN_STATE_REQ,
+    .fd = conn_fd,
+    .state = CONN_STATE_REQ,
   };
 
   // add the connection to the connections vector
   vector_push(connections, &conn);
-
-  // FIXME: figure out logging more broadly
-  // printf("client %d connected\n", conn_fd);
 
   return true;
 }
@@ -284,14 +256,12 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
   if (conn->state == CONN_STATE_REQ) {
 
     int bytes_read =
-        recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
+      recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
     if (bytes_read == -1) {
       perror("recv()");
       conn->state = CONN_STATE_END;
       return;
     } else if (bytes_read == 0) {
-      // FIXME: figure out logging more broadly
-      // printf("client %d disconnected\n", conn->fd);
       conn->state = CONN_STATE_END;
       return;
     }
@@ -301,36 +271,39 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // increment sequence #
     sequence_num++;   
-    
-    // FIXME: why allocating and free'ing here when the same
-    //        buffer can be reused based on the maximum output
-    //        buffer length?
 
-    // alloc prefixed send buffer
-    short seqmsg_size = sizeof(sequence_num) + bytes_read;
-    byte* obuf = malloc(sizeof(seqmsg_size) + seqmsg_size);
+    // save string representation of the sequence # 
+    sprintf(sequence_chars, "%ld", sequence_num);
 
-    // manufacture outbound message bytes
-    pack_msg(obuf, (byte*) conn->read_buffer, bytes_read);
+    // manufacture output message
+    int seq_len = strlen(sequence_chars);
+    char seq_ns[netstring_buffer_size(seq_len)];
+    sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
+   
+    int payload_len = strlen(conn->read_buffer);
+    char payload_ns[netstring_buffer_size(payload_len)];
+    sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
+
+    int total_msg_len = strlen(payload_ns) + strlen(seq_ns);
+    char obuf[netstring_buffer_size(total_msg_len)];
+
+    sprintf(obuf, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
     // send output buffer over UDP
     int nbytes = sendto(
-            udp_fd,
-	    obuf,
-	    sizeof(obuf),
-            0,
-            (sockaddr*) &multicast_addr,
-            sizeof(multicast_addr)
-        );
+                        udp_fd,
+                        obuf,
+                        strlen(obuf),
+                        0,
+                        (sockaddr*) &multicast_addr,
+                        sizeof(multicast_addr)
+                        );
     if (nbytes < 0) {
       perror("sendto");
       return;
     }
 
-    // for response back to TCP client
-    sprintf(sequence_chars, "%ld", sequence_num);
-
-    // populate TCP write buffer
+    // populate TCP write buffer for client response
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
 
     // this connection is ready to send a response now
@@ -338,13 +311,9 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // log
     now((char *) curstamp);
-    printf("%s send # %ld: pfx %lu msg %d total %lu bytes\n",
-	   (char *) curstamp, sequence_num, sizeof(seqmsg_size), seqmsg_size,
-	   (sizeof(seqmsg_size) + seqmsg_size));
-
-    // free output message buffer
-    free(obuf);
-    obuf = NULL;
+    printf("%s send # %s: pay %d seq %d total %lu bytes\n",
+           (char *) curstamp, sequence_chars, payload_len,
+           seq_len, strlen(obuf));
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
@@ -361,43 +330,9 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
   }
 }
 
-//static void announce(void) {
-  // Send multicast message:
-  // 
-  // current_sequence_number: 0
-  // maximum_message_length: ULONG_MAX
-  // sequence_number_byte_length: sizeof(ULONG_MAX)
-  // tcp_host: 127.0.0.1
-  // tcp_port: 3001
-//}
-
-static void pack_msg(byte* output_buffer, byte* input_buffer, int length) {
-
-  // sequence # value in network byte order
-  long seq = htonl(sequence_num);
-  
-  // calc length prefix
-  short sz = htons(sizeof(seq) + length);  
-
-  int offset = 0;
-  // append length
-  memcpy(output_buffer, &sz, sizeof(sz));
-  offset += sizeof(sz);
-
-  // append sequence number
-  memcpy(output_buffer + offset,
-	 &seq, sizeof(seq)); // sequence # 
-  offset += sizeof(seq);
-  
-  // append payload
-  memcpy(output_buffer + offset,
-	 input_buffer, length); // msg
-}
-
 static void now(char *datestr) {
   timespec tv;
   if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
-
   int epoch = tv.tv_sec;
   sprintf(datestr, "%d", epoch);
 }
