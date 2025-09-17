@@ -188,9 +188,9 @@ int main(int argc, char *argv[]) {
 
       // create pollfd struct and push it to the poll_fds vector
       pollfd pfd = {
-          .fd = conn->fd,
-          .events = (conn->state == CONN_STATE_REQ) ? POLLIN : POLLOUT,
-          .revents = 0,
+	.fd = conn->fd,
+	.events = (conn->state == CONN_STATE_REQ) ? POLLIN : POLLOUT,
+	.revents = 0,
       };
       pfd.events = pfd.events | POLLERR;
       vector_push(poll_fds, &pfd);
@@ -242,8 +242,8 @@ static bool accept_new_connection(void) {
 
   // creating the struct Conn
   Connection conn = {
-      .fd = conn_fd,
-      .state = CONN_STATE_REQ,
+    .fd = conn_fd,
+    .state = CONN_STATE_REQ,
   };
 
   // add the connection to the connections vector
@@ -256,7 +256,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
   if (conn->state == CONN_STATE_REQ) {
 
     int bytes_read =
-        recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
+      recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
     if (bytes_read == -1) {
       perror("recv()");
       conn->state = CONN_STATE_END;
@@ -291,13 +291,13 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // send output buffer over UDP
     int nbytes = sendto(
-            udp_fd,
-	    obuf,
-	    strlen(obuf),
-            0,
-            (sockaddr*) &multicast_addr,
-            sizeof(multicast_addr)
-        );
+			udp_fd,
+			obuf,
+			strlen(obuf),
+			0,
+			(sockaddr*) &multicast_addr,
+			sizeof(multicast_addr)
+			);
     if (nbytes < 0) {
       perror("sendto");
       return;
