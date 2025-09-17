@@ -118,21 +118,25 @@ int main(int argc, char *argv[]) {
         }
         msgbuf[nbytes] = '\0';
 
-	printf("buf: %s\n", msgbuf);
-
 	size_t payload_len;
-	char* payload = malloc(nbytes);
+	char* payload[nbytes];
 
 	int read = netstring_read(msgbuf, nbytes, (char **)  &payload, &payload_len);
 
-	printf("read %d into netstring\n", read);	
-	printf("buf: %s\n", payload);
+	printf("read: %d\n", read); 
+	
+	printf("buf: %s\n", msgbuf);
 
+	printf("pay: %lu\n", payload_len);
+
+	
+
+	/*
 	size_t message_len;
-	char* seq = malloc(payload_len);
+	char* seq[read];
 	  
 	netstring_read(payload, payload_len, (char **) &seq, &message_len);
-	
+	*/	
 	/**
 	int offset = 0;
 	// get size of message from length prefix
@@ -147,8 +151,8 @@ int main(int argc, char *argv[]) {
 	*/
 	
 
-	free(payload);
-	free(seq);
+	//	free(payload);
+	//free(seq);
 	  
 	
      }

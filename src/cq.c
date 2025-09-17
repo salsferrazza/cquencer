@@ -281,8 +281,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
 
-    printf("read %i bytes\n", bytes_read);
-
     // increment sequence #
     sequence_num++;   
 
@@ -291,13 +289,18 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // manufacture output message
     int seq_len = strlen(sequence_chars);
-    int seq_netstring_len = seq_len + strlen(":,") + 1;
-    int payload_netstring_len = bytes_read + strlen(":,") + 1;
-    int total_msg_len = payload_netstring_len + seq_netstring_len;
-    char obuf[total_msg_len + strlen(":,") + 1];
+    char seq_ns[netstring_buffer_size(seq_len)];
+    sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
+   
+    int payload_len = strlen(conn->read_buffer);
+    char payload_ns[netstring_buffer_size(payload_len)];
+    sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
 
-    sprintf(obuf, "%d:%d:%s,%d:%s,,", total_msg_len, seq_len, sequence_chars, bytes_read, conn->read_buffer); 
-  
+    int total_msg_len = strlen(payload_ns) + strlen(seq_ns);
+    char obuf[netstring_buffer_size(total_msg_len)];
+
+    sprintf(obuf, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
+
     // send output buffer over UDP
     int nbytes = sendto(
             udp_fd,
@@ -320,9 +323,9 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // log
     now((char *) curstamp);
-    printf("%s send # %ld: total %d bytes\n",
-	   (char *) curstamp, sequence_num,
-	   seq_len);
+    printf("%s send # %s: pay %d seq %d total %lu bytes\n",
+	   (char *) curstamp, sequence_chars, payload_len,
+	   seq_len, strlen(obuf));
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
