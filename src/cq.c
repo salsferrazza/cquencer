@@ -188,9 +188,9 @@ int main(int argc, char *argv[]) {
 
       // create pollfd struct and push it to the poll_fds vector
       pollfd pfd = {
-	.fd = conn->fd,
-	.events = (conn->state == CONN_STATE_REQ) ? POLLIN : POLLOUT,
-	.revents = 0,
+        .fd = conn->fd,
+        .events = (conn->state == CONN_STATE_REQ) ? POLLIN : POLLOUT,
+        .revents = 0,
       };
       pfd.events = pfd.events | POLLERR;
       vector_push(poll_fds, &pfd);
@@ -291,13 +291,13 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // send output buffer over UDP
     int nbytes = sendto(
-			udp_fd,
-			obuf,
-			strlen(obuf),
-			0,
-			(sockaddr*) &multicast_addr,
-			sizeof(multicast_addr)
-			);
+                        udp_fd,
+                        obuf,
+                        strlen(obuf),
+                        0,
+                        (sockaddr*) &multicast_addr,
+                        sizeof(multicast_addr)
+                        );
     if (nbytes < 0) {
       perror("sendto");
       return;
@@ -312,8 +312,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // log
     now((char *) curstamp);
     printf("%s send # %s: pay %d seq %d total %lu bytes\n",
-	   (char *) curstamp, sequence_chars, payload_len,
-	   seq_len, strlen(obuf));
+           (char *) curstamp, sequence_chars, payload_len,
+           seq_len, strlen(obuf));
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
