@@ -1,3 +1,8 @@
+//
+// cq  - a central sequence number server that receives unsequenced
+//       messages over TCP and sends sequenced UDP packets to 
+//       the specified multicast address
+
 // feature test macro for getaddrinfo() from man pages
 #define _POSIX_C_SOURCE 200112L
 
@@ -59,21 +64,8 @@ int main(int argc, char *argv[]) {
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
 
-  /*
-  StartupAnnouncement announce;
-  announce.ip_port = atoi(listen_port);
-  announce.current_sequence_number = sequence_num;
-  announce.maximum_sequence_number = ULONG_MAX;
-  announce.maximum_message_size = MAX_MESSAGE_LENGTH;
-  announce.sequence_number_size = sizeof(sequence_num);
-  */
-  
   // to store the return value of various function calls for error checking
   int rv;
-
-  /** SET UP TCP SOCKETS FOR INBOUND MESSAGES **/
-
-  //  setup_tcp();
   
   addrinfo hints = {0};     // make sure the struct is empty
   hints.ai_family = AF_UNSPEC;     // don't care whether it's IPv4 or IPv6
@@ -148,7 +140,7 @@ int main(int argc, char *argv[]) {
   // initialize the poll_fds vector
   poll_fds = vector_init(sizeof(pollfd), 0);
 
-  /** SET UP UDP MULTICAST FOR PUBLISHING **/
+  /** SET UP MULTICAST FOR PUBLISHING **/
   
   sockaddr_in multicast_addr;
   memset(&multicast_addr, 0, sizeof(multicast_addr));
@@ -163,6 +155,7 @@ int main(int argc, char *argv[]) {
   }
   
   // the event loop
+
   while (true) {
     // clear the poll_fds vector
     vector_clear(poll_fds);
@@ -256,9 +249,6 @@ static bool accept_new_connection(void) {
   // add the connection to the connections vector
   vector_push(connections, &conn);
 
-  // FIXME: figure out logging more broadly
-  // printf("client %d connected\n", conn_fd);
-
   return true;
 }
 
@@ -272,8 +262,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       conn->state = CONN_STATE_END;
       return;
     } else if (bytes_read == 0) {
-      // FIXME: figure out logging more broadly
-      // printf("client %d disconnected\n", conn->fd);
       conn->state = CONN_STATE_END;
       return;
     }
@@ -315,7 +303,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       return;
     }
 
-    // populate TCP write buffer
+    // populate TCP write buffer for client response
     memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
 
     // this connection is ready to send a response now
@@ -345,7 +333,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 static void now(char *datestr) {
   timespec tv;
   if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
-
   int epoch = tv.tv_sec;
   sprintf(datestr, "%d", epoch);
 }

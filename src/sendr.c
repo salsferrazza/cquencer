@@ -1,3 +1,6 @@
+//
+// TCP client to submit unsequenced messages
+//
 // feature test macro for getline() from man pages
 #define _POSIX_C_SOURCE 200809L
 
