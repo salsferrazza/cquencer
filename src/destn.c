@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 	
-        msgbuf[nbytes] = '\0';
+	msgbuf[nbytes] = '\0';
 	fprintf(stdout, "%s", msgbuf);
     }
 
