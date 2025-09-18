@@ -287,7 +287,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     int total_msg_len = strlen(payload_ns) + strlen(seq_ns);
     char obuf[netstring_buffer_size(total_msg_len)];
 
-    sprintf(obuf, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
+    sprintf(obuf, "%d:%s%s,", total_msg_len + 1, seq_ns, payload_ns);
 
     // send output buffer over UDP
     int nbytes = sendto(
