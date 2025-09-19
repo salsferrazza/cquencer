@@ -295,19 +295,12 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     int seq_len = strlen(sequence_chars);
     char seq_ns[netstring_buffer_size(seq_len)];
     sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
-    printf("%d %lu\n", seq_len,
-	   netstring_buffer_size(seq_len));
-
     
     int payload_len = strlen(conn->read_buffer);
     char payload_ns[netstring_buffer_size(payload_len)];
     sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
-    printf("%d %lu\n", payload_len,
-	   netstring_buffer_size(payload_len));
 
     int total_msg_len = strlen(payload_ns) + strlen(seq_ns);
-    printf("%d %lu\n", total_msg_len,
-	   netstring_buffer_size(total_msg_len));
 
     sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
