@@ -21,7 +21,6 @@
 #include <netinet/in.h>
 #include <limits.h>
 #include <arpa/inet.h>
-#include "./netstring.h"
 #include "./vector.h"
 #include "./cq.h"
 
@@ -228,6 +227,23 @@ int main(int argc, char *argv[]) {
   }
   return EXIT_SUCCESS;
 }
+int count_digits(int n) {
+    if (n == 0) {
+        return 1;
+    }
+    int count = 0;
+    while (n != 0) {
+        n /= 10;
+        count++;
+    }
+    return count;
+}
+
+static size_t netstring_buffer_size(size_t value_length) {
+    int length_digits = count_digits((int) value_length);
+
+    return (size_t) length_digits + 1 + value_length + 1;
+}
 
 static bool accept_new_connection(void) {
   // accept
@@ -279,21 +295,27 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     int seq_len = strlen(sequence_chars);
     char seq_ns[netstring_buffer_size(seq_len)];
     sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
-   
+    printf("%d %lu\n", seq_len,
+	   netstring_buffer_size(seq_len));
+
+    
     int payload_len = strlen(conn->read_buffer);
     char payload_ns[netstring_buffer_size(payload_len)];
     sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
+    printf("%d %lu\n", payload_len,
+	   netstring_buffer_size(payload_len));
 
     int total_msg_len = strlen(payload_ns) + strlen(seq_ns);
-    char obuf[netstring_buffer_size(total_msg_len)];
+    printf("%d %lu\n", total_msg_len,
+	   netstring_buffer_size(total_msg_len));
 
-    sprintf(obuf, "%d:%s%s,", total_msg_len + 1, seq_ns, payload_ns);
+    sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
     // send output buffer over UDP
     int nbytes = sendto(
                         udp_fd,
-                        obuf,
-                        strlen(obuf),
+                        udp_output_buffer,
+                        strlen(udp_output_buffer),
                         0,
                         (sockaddr*) &multicast_addr,
                         sizeof(multicast_addr)
@@ -313,7 +335,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     now((char *) curstamp);
     printf("%s send # %s: pay %d seq %d total %lu bytes\n",
            (char *) curstamp, sequence_chars, payload_len,
-           seq_len, strlen(obuf));
+           seq_len, strlen(udp_output_buffer));
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
