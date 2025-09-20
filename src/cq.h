@@ -32,20 +32,6 @@ typedef struct {
   char write_buffer[BUFFER_LENGTH];
 } Connection;
 
-typedef struct {
-  unsigned long sequence_number;
-  byte message_bytes[MAX_MESSAGE_LENGTH];
-} SequencedMessage;
-
-typedef struct {
-  char* ip_address;
-  int ip_port;
-  int maximum_message_size;
-  int sequence_number_size;
-  unsigned long maximum_sequence_number;
-  unsigned long current_sequence_number;
-} StartupAnnouncement;
-
 static bool accept_new_connection(void);
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
 // static void announce(void);
