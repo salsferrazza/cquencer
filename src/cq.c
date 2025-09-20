@@ -129,7 +129,8 @@ int main(int argc, char *argv[]) {
     perror("listen()");
     return EXIT_FAILURE;
   }
- 
+
+  // FIXME: print this to stderr instead
   printf("Listening on port %s...\n", listen_port);
   printf("Current sequence number is %ld\n", sequence_num);
   
