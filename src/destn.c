@@ -21,7 +21,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "./netstring.h"
 
 #define MSGBUFSIZE 1024 + sizeof(int) + sizeof(long)
 #define SEQNUMSIZE sizeof(long)
