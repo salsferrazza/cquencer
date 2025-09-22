@@ -13,8 +13,7 @@ ordering mechanism described by [Défago, et al](https://infoscience.epfl.ch/ser
 `cquencer` adheres to a simple protocol and is payload-agnostic. It listens for connections over TCP on a local
 address and port. Each message received over that port is assigned a
 sequence number and both the sequence number and the original message
-payload are published to the specified multicast group with UDP and
-length-prefixed message framing. 
+payload are published to the specified multicast group over UDP. 
 
 ## Rationale
 
@@ -39,11 +38,24 @@ send the sequenced bytes to its specified multicast group.
 ## Protocol
 
 The `cquencer` accepts any data over its TCP port as a discrete
-message. Those bytes are then prepended with a sequence number of 8
-bytes and a length-prefix (inclusive of the prepended sequence) of 2
-bytes. Hence a submitted payload of 100 bytes becomes 110 bytes output
-over the UDP socket to the multicast group. 
+message.
 
+TCP clients, upon sequencing of the message, are returned an ASCII-encoded sequence number as the only response. 
+
+The message sent to the multicast group is encoded as a nested [netstring](https://en.wikipedia.org/wiki/Netstring). The entire contents of the multicast message is itself a netstring that is composed of two child netstrings. The first child netstring contains the sequence number. The second child netstring contains the original message bytes, undisturbed. For example:
+
+TCP Sender:
+```
+% bin/sendr 3001
+? hello world
+# 83761
+```
+
+UDP Destination:
+```
+% bin/destn 239.0.0.1 1234
+23:5:83761,11:hello world,,
+```
 
 ## Building `cquencer`
 
@@ -78,79 +90,6 @@ sequence number and size
   plain-text messages.
 
 `sendr <IP of sequencer process> <port of sequencer process>` 
-
-## Example
-
-### Start the sequencer on port 3001
-```
-bin/cq 3001 239.0.0.1 1234
-Listening on port 3001...
-Current sequence number is 0
-```
-
-### Use client to send a message and receive sequence number reply
-
-```
-% bin/sendr 3001
-? hello world
-# 1
-? 
-```
-
-### ... or use netcat to blast random bytes to the sequencer – disregarding the response
-
-```
-% while true; do  head -c$(( (RANDOM % 91) + 10 )) /dev/random| nc -c localhost 3001 ; echo ; done
-1
-2
-3
-4
-5
-6
-^C
-```
-
-### Sequencer output
-
-```
-% bin/cq 3001 239.0.0.1 1234
-Listening on port 3001...
-Current sequence number is 0
-1753238522 send # 1: pfx 2 msg 28 total 30 bytes
-1753238523 send # 2: pfx 2 msg 28 total 30 bytes
-1753238523 send # 3: pfx 2 msg 28 total 30 bytes
-1753238524 send # 4: pfx 2 msg 28 total 30 bytes
-1753238524 send # 5: pfx 2 msg 28 total 30 bytes
-1753238525 send # 6: pfx 2 msg 28 total 30 bytes
-```
-
-### Basic multicast destination
-
-The `destn` binary logs the sequence number and size of message payload to the console
-
-#### Sender
-```
-% bin/sendr 3001
-? hello world
-# 1
-? 
-```
-
-#### Sequencer
-```
-% bin/cq 3001 239.0.0.1 1234
-Listening on port 3001...
-Current sequence number is 0
-1753238653 send # 1: pfx 2 msg 20 total 22 bytes
-
-```
-
-#### Destination
-```
-% bin/destn 239.0.0.1 1234
-seq: 1	msg sz: 12
-^C
-```
 
 ## Acknowledgements
 
