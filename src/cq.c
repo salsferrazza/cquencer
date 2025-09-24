@@ -320,7 +320,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     }
 
     // populate TCP write buffer for client response
-    memcpy(conn->write_buffer, sequence_chars, sizeof(sequence_chars));
+    memcpy(conn->write_buffer, sequence_chars, strlen(sequence_chars));
 
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
