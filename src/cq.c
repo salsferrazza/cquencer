@@ -41,7 +41,7 @@ char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 char udp_output_buffer[BUFFER_LENGTH];
 
 // string timestamp of latest sequenced message
-char curstamp[40];
+char curstamp[21];
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
