@@ -41,7 +41,7 @@ char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 char udp_output_buffer[BUFFER_LENGTH];
 
 // string timestamp of latest sequenced message
-char curstamp[40];
+char curstamp[21];
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
@@ -290,8 +290,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     sequence_num++;   
 
     // save string representation of the sequence # 
-    sprintf(sequence_chars, "%ld", sequence_num);
-
+    sprintf(sequence_chars, "%lu", sequence_num);
+    
     // manufacture output message
     int seq_len = strlen(sequence_chars);
     char seq_ns[netstring_buffer_size(seq_len)];
@@ -349,8 +349,9 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 static void now(char *datestr) {
   timespec tv;
   if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
-  int epoch = tv.tv_sec;
-  sprintf(datestr, "%d", epoch);
+  int sec = tv.tv_sec;
+  int nsec = tv.tv_nsec;
+  sprintf(datestr, "%d%09d", sec, nsec);
 }
 
 static void cleanup(void) {
