@@ -24,6 +24,15 @@
 #include "./vector.h"
 #include "./cq.h"
 
+// message log file pointer
+FILE *logptr;
+
+// strimg presemtation of current PID
+char pidstr[11];
+
+// string timestamp of latest sequenced message
+char curstamp[21];
+
 // the tcp socket file descriptor
 int tcp_fd = -1;
 
@@ -39,9 +48,6 @@ char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 
 // UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
-
-// string timestamp of latest sequenced message
-char curstamp[21];
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
@@ -62,6 +68,13 @@ int main(int argc, char *argv[]) {
   char* listen_port = argv[1];
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
+
+  char logname[strlen(pidstr) + strlen("-") + strlen(curstamp) + strlen(".msg")];
+  logfile_name((char *) logname);
+
+  logptr = fopen(logname, "wb");
+
+  fprintf(logptr, "%s", logname);
 
   // to store the return value of various function calls for error checking
   int rv;
@@ -228,7 +241,9 @@ int main(int argc, char *argv[]) {
   }
   return EXIT_SUCCESS;
 }
-int count_digits(int n) {
+
+
+static int count_digits(int n) {
     if (n == 0) {
         return 1;
     }
@@ -239,6 +254,7 @@ int count_digits(int n) {
     }
     return count;
 }
+
 
 static size_t netstring_buffer_size(size_t value_length) {
     int length_digits = count_digits((int) value_length);
@@ -302,9 +318,13 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
 
     int total_msg_len = strlen(payload_ns) + strlen(seq_ns);
-
+    
     sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
+    fprintf(logptr, "%s", udp_output_buffer);
+
+    fflush(logptr);
+    
     // send output buffer over UDP
     int nbytes = sendto(
                         udp_fd,
@@ -346,6 +366,13 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
   }
 }
 
+static void logfile_name(char *logname) {
+  int pid = getpid();
+  sprintf((char *) pidstr, "%d", pid);
+  now((char *) curstamp);
+  sprintf(logname, "%s-%s.msg", pidstr, curstamp);
+}
+
 static void now(char *datestr) {
   timespec tv;
   if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
@@ -358,6 +385,11 @@ static void cleanup(void) {
   // close the socket file descriptor
   if (tcp_fd != -1) {
     close(tcp_fd);
+  }
+
+  // close the message log file descriptor
+  if (logptr != NULL) {
+    fclose(logptr);
   }
 
   // free the addrinfo linked list

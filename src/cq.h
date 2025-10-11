@@ -36,6 +36,7 @@ static bool accept_new_connection(void);
 static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
 // static void announce(void);
 static void now(char* datestr);
+static void logfile_name(char* logname);
 static void cleanup(void);
 static void handle_sigint(int sig);
 
