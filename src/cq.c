@@ -73,9 +73,11 @@ int main(int argc, char *argv[]) {
   logfile_name((char *) logname);
 
   logptr = fopen(logname, "wb");
-
-  fprintf(logptr, "%s", logname);
-
+  if (logptr == NULL) {
+      perror("fopen()");
+      exit(EXIT_FAILURE);
+  }
+  
   // to store the return value of various function calls for error checking
   int rv;
   
