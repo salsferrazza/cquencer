@@ -145,9 +145,8 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  // FIXME: print this to stderr instead
-  printf("Listening on port %s...\n", listen_port);
-  printf("Current sequence number is %ld\n", sequence_num);
+  fprintf(stderr, "Listening on port %s...\n", listen_port);
+  fprintf(stderr, "Current sequence number is %ld\n", sequence_num);
   
   // initialize connections vector
   connections = vector_init(sizeof(Connection), 0);
