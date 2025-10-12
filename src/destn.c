@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     u_int yes = 1;
     if (
         setsockopt(
-            fd, SOL_SOCKET, SO_REUSEADDR, (char*) &yes, sizeof(yes)
+            fd, SOL_SOCKET, SO_REUSEPORT, (char*) &yes, sizeof(yes)
         ) < 0
     ){
        perror("Reusing ADDR failed");

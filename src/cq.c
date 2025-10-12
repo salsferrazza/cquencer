@@ -27,7 +27,7 @@
 // message log file pointer
 FILE *logptr;
 
-// strimg presemtation of current PID
+// strimg presentation of current PID
 char pidstr[11];
 
 // string timestamp of latest sequenced message
@@ -69,9 +69,9 @@ int main(int argc, char *argv[]) {
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
 
+  // derive logfile name from PID and date, create descriptor for writing
   char logname[strlen(pidstr) + strlen("-") + strlen(curstamp) + strlen(".msg")];
   logfile_name((char *) logname);
-
   logptr = fopen(logname, "wb");
   if (logptr == NULL) {
       perror("fopen()");
@@ -322,9 +322,14 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     
     sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
+    // persist message locally    
     fprintf(logptr, "%s", udp_output_buffer);
 
-    fflush(logptr);
+    // flush immediately
+    if (fflush(logptr) != 0) {
+      perror("fflush()");
+      exit(EXIT_FAILURE);
+    }
     
     // send output buffer over UDP
     int nbytes = sendto(
