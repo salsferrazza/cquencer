@@ -6,6 +6,7 @@
 // feature test macro for getaddrinfo() from man pages
 #define _POSIX_C_SOURCE 200112L
 
+#include <assert.h>
 #include <errno.h>
 #include <netdb.h>      // for getaddrinfo()
 #include <poll.h>       // for poll()
@@ -49,6 +50,11 @@ char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 // UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
 
+//
+int total_msg_len, payload_len, seq_len = 0;
+char payload_ns[BUFFER_LENGTH];
+char seq_ns[25];
+
 // a vector of Connection structs to store the active connections
 Vector *connections;
 // std::vector<Connection> connections;
@@ -69,13 +75,17 @@ int main(int argc, char *argv[]) {
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
 
-  // derive logfile name from PID and date, create descriptor for writing
-  char logname[strlen(pidstr) + strlen("-") + strlen(curstamp) + strlen(".msg")];
-  logfile_name((char *) logname);
-  logptr = fopen(logname, "wb");
-  if (logptr == NULL) {
+
+  if (LOGMSG != 0) {
+    // derive logfile name from PID and date, create descriptor for writing
+    char logname[strlen(pidstr) + strlen("-") + strlen(curstamp) + strlen(".msg")];
+    logfile_name((char *) logname);
+    logptr = fopen(logname, "wb");
+    if (logptr == NULL) {
       perror("fopen()");
       exit(EXIT_FAILURE);
+    }
+    setbuf(logptr, NULL); // unbuffer log file
   }
   
   // to store the return value of various function calls for error checking
@@ -243,26 +253,6 @@ int main(int argc, char *argv[]) {
   return EXIT_SUCCESS;
 }
 
-
-static int count_digits(int n) {
-    if (n == 0) {
-        return 1;
-    }
-    int count = 0;
-    while (n != 0) {
-        n /= 10;
-        count++;
-    }
-    return count;
-}
-
-
-static size_t netstring_buffer_size(size_t value_length) {
-    int length_digits = count_digits((int) value_length);
-
-    return (size_t) length_digits + 1 + value_length + 1;
-}
-
 static bool accept_new_connection(void) {
   // accept
   sockaddr_storage client_addr = {};
@@ -304,31 +294,35 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     conn->read_buffer[bytes_read] = '\0';
 
     // increment sequence #
-    sequence_num++;   
+    // sequence_num++;   
 
     // save string representation of the sequence # 
-    sprintf(sequence_chars, "%lu", sequence_num);
+    sprintf(sequence_chars, "%lu", ++sequence_num);
     
     // manufacture output message
-    int seq_len = strlen(sequence_chars);
-    char seq_ns[netstring_buffer_size(seq_len)];
+    seq_len = strlen(sequence_chars);
+
+    assert(seq_len > 0);    
     sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
+
+    total_msg_len += strlen(seq_ns);
     
-    int payload_len = strlen(conn->read_buffer);
-    char payload_ns[netstring_buffer_size(payload_len)];
+    //    printf("%s\n", seq_ns);
+    
+    assert(strlen(seq_ns) > 0);
+    
+    payload_len = strlen(conn->read_buffer);
     sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
 
-    int total_msg_len = strlen(payload_ns) + strlen(seq_ns);
+    total_msg_len += strlen(payload_ns);
+    
+    printf("%d:%s%s,\n", total_msg_len, seq_ns, payload_ns);
     
     sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
-    // persist message locally    
-    fprintf(logptr, "%s", udp_output_buffer);
-
-    // flush immediately
-    if (fflush(logptr) != 0) {
-      perror("fflush()");
-      exit(EXIT_FAILURE);
+    if (LOGMSG) {
+      // persist message locally    
+      fprintf(logptr, "%s", udp_output_buffer);
     }
     
     // send output buffer over UDP
@@ -351,11 +345,20 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
 
+    // reset values for next iteration
+    memset(udp_output_buffer, 0, BUFFER_LENGTH);
+    memset(seq_ns, 0, strlen(seq_ns));
+    memset(payload_ns, 0, strlen(payload_ns));
+    total_msg_len = 0;
+    seq_len = 0;
+    payload_len = 0;
+    
+    
     // log
-    now((char *) curstamp);
-    printf("%s send # %s: pay %d seq %d total %lu bytes\n",
-           (char *) curstamp, sequence_chars, payload_len,
-           seq_len, strlen(udp_output_buffer));
+    // now((char *) curstamp);
+    //    printf("%s send # %s: pay %d seq %d total %lu bytes\n",
+    //     (char *) curstamp, sequence_chars, payload_len,
+    //     seq_len, strlen(udp_output_buffer));
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
@@ -393,9 +396,11 @@ static void cleanup(void) {
     close(tcp_fd);
   }
 
-  // close the message log file descriptor
-  if (logptr != NULL) {
-    fclose(logptr);
+  if (LOGMSG != 0) {
+    // close the message log file descriptor
+    if (logptr != NULL) {
+      fclose(logptr);
+    }
   }
 
   // free the addrinfo linked list
