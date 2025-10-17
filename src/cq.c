@@ -53,7 +53,7 @@ char udp_output_buffer[BUFFER_LENGTH];
 //
 int total_msg_len, payload_len, seq_len = 0;
 char payload_ns[BUFFER_LENGTH];
-char seq_ns[25];
+char seq_ns[25]; // 20 + strlen("20:,") + null terminator 
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
@@ -293,9 +293,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
 
-    // increment sequence #
-    // sequence_num++;   
-
     // save string representation of the sequence # 
     sprintf(sequence_chars, "%lu", ++sequence_num);
     
@@ -306,17 +303,13 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
 
     total_msg_len += strlen(seq_ns);
-    
-    //    printf("%s\n", seq_ns);
-    
+
     assert(strlen(seq_ns) > 0);
     
     payload_len = strlen(conn->read_buffer);
     sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
 
     total_msg_len += strlen(payload_ns);
-    
-    printf("%d:%s%s,\n", total_msg_len, seq_ns, payload_ns);
     
     sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
@@ -352,13 +345,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     total_msg_len = 0;
     seq_len = 0;
     payload_len = 0;
-    
-    
-    // log
-    // now((char *) curstamp);
-    //    printf("%s send # %s: pay %d seq %d total %lu bytes\n",
-    //     (char *) curstamp, sequence_chars, payload_len,
-    //     seq_len, strlen(udp_output_buffer));
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
