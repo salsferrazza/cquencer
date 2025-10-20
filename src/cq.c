@@ -292,7 +292,15 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
 
     // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
-
+    
+    // if there is no content, return the current sequence number and bail
+    if (bytes_read <= 1) {
+      sprintf(sequence_chars, "%lu", sequence_num);
+      memcpy(conn->write_buffer, sequence_chars, strlen(sequence_chars));
+      conn->state = CONN_STATE_RES;
+      return;
+    }
+    
     // save string representation of the sequence # 
     sprintf(sequence_chars, "%lu", ++sequence_num);
     
