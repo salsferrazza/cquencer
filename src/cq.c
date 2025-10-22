@@ -243,22 +243,22 @@ int main(int argc, char *argv[]) {
 
         handle_connection_io(conn, udp_fd, multicast_addr);
 
-	if (strlen(udp_output_buffer) > 0) {
-	  // send output buffer over UDP
-	  int nbytes = sendto(
-			      udp_fd,
-			      udp_output_buffer,
-			      strlen(udp_output_buffer),
-			      0,
-			      (sockaddr*) &multicast_addr,
-			      sizeof(multicast_addr)
-			      );
-	  if (nbytes < 0) {
-	    perror("sendto");
-	  }
-	  // reset values for next iteration
-	  memset(udp_output_buffer, 0, BUFFER_LENGTH);
-	}
+        if (strlen(udp_output_buffer) > 0) {
+          // send output buffer over UDP
+          int nbytes = sendto(
+                              udp_fd,
+                              udp_output_buffer,
+                              strlen(udp_output_buffer),
+                              0,
+                              (sockaddr*) &multicast_addr,
+                              sizeof(multicast_addr)
+                              );
+          if (nbytes < 0) {
+            perror("sendto");
+          }
+          // reset values for next iteration
+          memset(udp_output_buffer, 0, BUFFER_LENGTH);
+        }
       }
     }
 
