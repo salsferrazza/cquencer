@@ -75,7 +75,6 @@ int main(int argc, char *argv[]) {
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
 
-
   if (LOGMSG != 0) {
     // derive logfile name from PID and date, create descriptor for writing
     char logname[strlen(pidstr) + strlen("-") + strlen(curstamp) + strlen(".msg")];
@@ -241,7 +240,25 @@ int main(int argc, char *argv[]) {
           // this should never happen, but just in case
           continue;
         }
+
         handle_connection_io(conn, udp_fd, multicast_addr);
+
+	if (strlen(udp_output_buffer) > 0) {
+	  // send output buffer over UDP
+	  int nbytes = sendto(
+			      udp_fd,
+			      udp_output_buffer,
+			      strlen(udp_output_buffer),
+			      0,
+			      (sockaddr*) &multicast_addr,
+			      sizeof(multicast_addr)
+			      );
+	  if (nbytes < 0) {
+	    perror("sendto");
+	  }
+	  // reset values for next iteration
+	  memset(udp_output_buffer, 0, BUFFER_LENGTH);
+	}
       }
     }
 
@@ -325,20 +342,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       // persist message locally    
       fprintf(logptr, "%s", udp_output_buffer);
     }
-    
-    // send output buffer over UDP
-    int nbytes = sendto(
-                        udp_fd,
-                        udp_output_buffer,
-                        strlen(udp_output_buffer),
-                        0,
-                        (sockaddr*) &multicast_addr,
-                        sizeof(multicast_addr)
-                        );
-    if (nbytes < 0) {
-      perror("sendto");
-      return;
-    }
 
     // populate TCP write buffer for client response
     memcpy(conn->write_buffer, sequence_chars, strlen(sequence_chars));
@@ -346,8 +349,6 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
 
-    // reset values for next iteration
-    memset(udp_output_buffer, 0, BUFFER_LENGTH);
     memset(seq_ns, 0, strlen(seq_ns));
     memset(payload_ns, 0, strlen(payload_ns));
     total_msg_len = 0;
