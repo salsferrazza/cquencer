@@ -38,12 +38,10 @@ class Destination:
 
     def on_message(self, seq, msg): 
         expect = self.last_sequence_number + 1
-        # this keeps the whole thing together
+        # without this check, everything falls apart
         if seq != expect:
             raise Exception(f"Sequence number mismatch got {seq} but expected {expect}") 
 
-#        print(f"{seq}: {msg.decode('utf-8')}")
-        
         self.messages_received += 1
         self.last_sequence_number = seq
 
@@ -75,23 +73,21 @@ class InventoryDestination(Destination):
         inv = msg.split()
         msg_type = inv[0].decode('utf-8')
         if msg_type == "I":
-            self.inventory.add(inv[2].decode('utf-8'), int(inv[1]))
             self.on_inventory(inv[2].decode('utf-8'), int(inv[1]))
         elif msg_type == "D":
-            self.inventory.apply(inv[2].decode('utf-8'), int(inv[1]))
             self.on_inventory_delta(inv[2].decode('utf-8'), int(inv[1]))
         
     def on_inventory(self, sku, level):
+        self.inventory.add(sku, level)
         print(f"{sku} {level}")
     
     def on_inventory_delta(self, sku, delta):
         level = self.inventory.get(sku)
+        self.inventory.apply(sku, delta)
         print(f"{sku} {delta} {level}")
-
 
 class Sender():
     def __init__(self, port):
-        print("in sender")
         self.port = port
         self.host = socket.gethostname()
         self.client_socket = socket.socket()
@@ -100,7 +96,10 @@ class Sender():
         
     def send(self, msg):
         self.client_socket.send(msg.encode())
-        self.last_sequence_sent = int(self.client_socket.recv(21).decode('utf-8'))
+        (bytes, addr) = self.client_socket.recvfrom(21)
+        
+        self.last_sequence_sent = bytes.decode('utf-8')
+        print(f"got seq: {self.last_sequence_sent}")
         
 class PointOfSale(InventoryDestination):
     def __init__(self, group, port):
@@ -121,21 +120,19 @@ class Warehouse(InventoryDestination):
         self.sender = Sender(3001)
 
     def on_message(self, seq, msg):
-        print("warehouse on message")
-        super().on_message(seq, msg)
-        msg_fields = msg.split()
-        msg_type = msg_fields[0].decode('utf-8')
-        if msg_type == "O":
-            print("found order")
-            qty = int(msg_fields[1])
-            sku = msg_fields[2].decode('utf-8')
-            self.on_order(sku, qty * -1)
+        if seq != self.sender.last_sequence_sent:
+            super().on_message(seq, msg)
+            msg_fields = msg.split()
+            msg_type = msg_fields[0].decode('utf-8')
+            if msg_type == "O":
+                qty = int(msg_fields[1])
+                sku = msg_fields[2].decode('utf-8')
+                self.on_order(sku, qty)
 
     def on_order(self, sku, qty):
-        print("on_order")
         current_level = self.inventory.get(sku)
         if qty <= current_level:
-            self.inventory.apply(sku, qty * -1)
+#            self.inventory.apply(sku, qty * -1)
             self.sender.send(" ".join(["D", str(qty * -1), sku]))
         
 def main():
