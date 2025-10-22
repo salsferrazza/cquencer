@@ -90,15 +90,52 @@ class InventoryDestination(Destination):
     def on_inventory_delta(self, sku, delta):
         level = self.inventory.get(sku)
         print(f"{sku} {delta} {level}")
-    
+
+
+class Sender():
+    def __init__(self, port):
+        self.port = port
+        self.host = socket.gethostname()
+        self.client_socket = socket.socket()
+        self.client_socket.connect((self.host, self.port))
+        self.last_sequence_sent = 0
+        
+    def send(self, msg):
+        self.client_socket.send(msg.encode())
+        self.last_sequence_sent = int(self.client_socket.recv(21).decode('utf-8'))
         
 class PointOfSale(InventoryDestination):
-    def on_message(self, seq, msg):
-        super().on_message(seq, msg)
+    def __init__(self, group, port):
+        super().__init__(group, port)
+        self.sender = Sender(3001)
 
+    def send_order(self, sku, quantity):
+        current_stock = self.inventory.get(sku)
+        if quantity <= current_stock:
+            self.sender.send(" ".join(["O", quantity, sku]))
+            return True
+        else:
+            return False
+        
 class Warehouse(InventoryDestination):
+    def __init__(self, group, port):
+        super().__init__(group, port)
+        self.sender = Sender(3001)
+
     def on_message(self, seq, msg):
         super().on_message(seq, msg)
+        msg_fields = msg.split()
+        msg_type = msg_fields[0].decode('utf-8')
+        if msg_type == "O":
+            qty = msg_fields[1]
+            sku = msg_fields[2]
+            self.on_order(sku, qty * -1)
+
+    def on_order(self, sku, qty):
+        current_level = self.inventory.get(sku)
+        if qty <= current_level:
+            self.apply(sku, qty * -1)
+            self.sender.send(" ".join(["D", qty * -1, sku]))
         
 def main():
     dest = InventoryDestination(sys.argv[1], sys.argv[2])
@@ -108,3 +145,4 @@ if __name__ == "__main__":
     main()
     
  
+gi
