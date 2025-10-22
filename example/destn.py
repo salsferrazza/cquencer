@@ -136,6 +136,8 @@ class Warehouse(InventoryDestination):
             self.sender.send(" ".join(["D", str(qty * -1), sku]))
 
     def on_inventory_delta(self, sku, delta):
+        # ignore message if it was sent by me, since local
+        # inventory is already updated
         if self.last_sequence_number != self.sender.last_sequence_sent:
             super().on_inventory_delta(sku, delta)
 
