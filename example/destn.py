@@ -80,9 +80,6 @@ class InventoryDestination(Destination):
         elif msg_type == "D":
             self.inventory.apply(inv[2].decode('utf-8'), int(inv[1]))
             self.on_inventory_delta(inv[2].decode('utf-8'), int(inv[1]))
-        else:
-            # unknown message type
-            pass
         
     def on_inventory(self, sku, level):
         print(f"{sku} {level}")
@@ -94,6 +91,7 @@ class InventoryDestination(Destination):
 
 class Sender():
     def __init__(self, port):
+        print("in sender")
         self.port = port
         self.host = socket.gethostname()
         self.client_socket = socket.socket()
@@ -123,22 +121,25 @@ class Warehouse(InventoryDestination):
         self.sender = Sender(3001)
 
     def on_message(self, seq, msg):
+        print("warehouse on message")
         super().on_message(seq, msg)
         msg_fields = msg.split()
         msg_type = msg_fields[0].decode('utf-8')
         if msg_type == "O":
-            qty = msg_fields[1]
-            sku = msg_fields[2]
+            print("found order")
+            qty = int(msg_fields[1])
+            sku = msg_fields[2].decode('utf-8')
             self.on_order(sku, qty * -1)
 
     def on_order(self, sku, qty):
+        print("on_order")
         current_level = self.inventory.get(sku)
         if qty <= current_level:
-            self.apply(sku, qty * -1)
-            self.sender.send(" ".join(["D", qty * -1, sku]))
+            self.inventory.apply(sku, qty * -1)
+            self.sender.send(" ".join(["D", str(qty * -1), sku]))
         
 def main():
-    dest = InventoryDestination(sys.argv[1], sys.argv[2])
+    dest = Warehouse(sys.argv[1], sys.argv[2])
     dest.listen()
     
 if __name__ == "__main__":
