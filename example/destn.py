@@ -98,9 +98,10 @@ class Sender():
     def send(self, msg):
         self.client_socket.sendall(msg.encode())
         bytes = self.client_socket.recv(21)
+        resp = bytes.decode('utf-8')
         
-        self.last_sequence_sent = int(bytes.decode('utf-8'))
-        print(f"got seq: {self.last_sequence_sent}")
+        self.last_sequence_sent = int(resp)
+        print(f"submitted #{self.last_sequence_sent}")
         
 class PointOfSale(InventoryDestination):
     def __init__(self, group, port):
