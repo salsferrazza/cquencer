@@ -243,8 +243,8 @@ int main(int argc, char *argv[]) {
 
         handle_connection_io(conn, udp_fd, multicast_addr);
 
+	// send output buffer over UDP
         if (strlen(udp_output_buffer) > 0) {
-          // send output buffer over UDP
           int nbytes = sendto(
                               udp_fd,
                               udp_output_buffer,
