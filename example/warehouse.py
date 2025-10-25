@@ -3,7 +3,7 @@ from sender import SenderMixin
 
 class Warehouse(InventoryDestination, SenderMixin):
     def __init__(self, group, port, remote_port):
-        print("warehoust init")
+        print("warehouse init")
         self.remote_port = remote_port
         self.connect("localhost", remote_port)
         print("warehosue init done")
