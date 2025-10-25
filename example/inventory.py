@@ -6,7 +6,10 @@ class InventoryCollection():
         self.inventory = {}
 
     def get(self, sku):
-        return self.inventory[sku]
+        if sku is not None:
+            return self.inventory.get(sku)
+
+        return self.inventory.keys()
         
     def add(self, sku, stock_level):
         self.inventory[sku] = stock_level
@@ -23,8 +26,12 @@ class InventoryDestination(Destination):
         super().__init__(group, port)
         self.inventory = InventoryCollection()
 
+    def get_skus(self):
+        return self.inventory.get(sku=None)
+            
     def on_message(self, seq, msg):
         super().on_message(seq, msg)
+        print(f"msg {seq}")
         inv = msg.split()
         msg_type = inv[0].decode('utf-8')
         if msg_type == "I":

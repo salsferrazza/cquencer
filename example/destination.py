@@ -5,6 +5,7 @@ from netstring import Connection
 
 class Destination:
     def __init__(self, group, port):
+        print("destination init")
         self.group = group
         self.port = port
         self.conn = Connection()
@@ -17,8 +18,10 @@ class Destination:
         mreq = struct.pack('4sl', socket.inet_aton(self.group), socket.INADDR_ANY)
 
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        print("destination init done")
         
     def listen(self):
+        print("destination listening...")
         while True:
             # get the entire nested netstring
             self.conn.receive_data(self.sock.recv(10240))

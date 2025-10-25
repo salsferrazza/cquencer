@@ -1,12 +1,16 @@
 from inventory import InventoryDestination
-from sender import Sender
+from sender import SenderMixin
 
-class Warehouse(InventoryDestination):
-    def __init__(self, group, port):
+class Warehouse(InventoryDestination, SenderMixin):
+    def __init__(self, group, port, remote_port):
+        print("warehoust init")
+        self.remote_port = remote_port
+        self.connect("localhost", remote_port)
+        print("warehosue init done")
         super().__init__(group, port)
-        self.sender = Sender(3001)
-
+                  
     def on_message(self, seq, msg):
+        print(f"warehouse on_message {seq}")
         super().on_message(seq, msg)
         msg_fields = msg.split()
         msg_type = msg_fields[0].decode('utf-8')
@@ -19,10 +23,10 @@ class Warehouse(InventoryDestination):
         current_level = self.inventory.get(sku)
         if qty <= current_level:
             self.inventory.apply(sku, qty * -1)
-            self.sender.send(" ".join(["D", str(qty * -1), sku]))
+            self.send(" ".join(["D", str(qty * -1), sku]))
 
     def on_inventory_delta(self, sku, delta):
         # ignore message if it was sent by me, since local
         # inventory is already updated
-        if self.last_sequence_number != self.sender.last_sequence_sent:
+        if self.last_sequence_number != self.last_sequence_sent:
             super().on_inventory_delta(sku, delta)
