@@ -1,3 +1,4 @@
+import traceback
 from destination import Destination
 
 class InventoryCollection():
@@ -32,12 +33,16 @@ class InventoryDestination(Destination):
     def on_message(self, seq, msg):
         super().on_message(seq, msg)
         print(f"msg {seq}")
-        inv = msg.split()
-        msg_type = inv[0].decode('utf-8')
-        if msg_type == "I":
-            self.on_inventory(inv[2].decode('utf-8'), int(inv[1]))
-        elif msg_type == "D":
-            self.on_inventory_delta(inv[2].decode('utf-8'), int(inv[1]))
+        try:
+            inv = msg.split()
+            msg_type = inv[0].decode('utf-8')
+            if msg_type == "I":
+                self.on_inventory(inv[2].decode('utf-8'), int(inv[1]))
+            elif msg_type == "D":
+                self.on_inventory_delta(inv[2].decode('utf-8'), int(inv[1]))
+        except Exception as exc:
+            traceback.print_exc()
+            print(f"msg {seq} was unparseable: {exc} {msg}")
         
     def on_inventory(self, sku, level):
         self.inventory.add(sku, level)

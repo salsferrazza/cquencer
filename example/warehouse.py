@@ -8,7 +8,8 @@ class Warehouse(InventoryDestination, SenderMixin):
         self.connect("localhost", remote_port)
         print("warehosue init done")
         super().__init__(group, port)
-                  
+        print(f"current sequence # is {self.last_sequence_number}")
+        
     def on_message(self, seq, msg):
         print(f"warehouse on_message {seq}")
         super().on_message(seq, msg)
@@ -30,3 +31,5 @@ class Warehouse(InventoryDestination, SenderMixin):
         # inventory is already updated
         if self.last_sequence_number != self.last_sequence_sent:
             super().on_inventory_delta(sku, delta)
+        else:
+            print(f"ignoring #{self.last_sequence_number}")
