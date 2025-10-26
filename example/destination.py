@@ -24,7 +24,7 @@ class Destination:
         print("destination listening...")
         while True:
             # get the entire nested netstring
-            self.conn.receive_data(self.sock.recv(10240))
+            self.conn.receive_data(self.sock.recv(1024))
 
             # feed both netstrings back into the conneciton
             self.conn.receive_data(self.conn.next_event())

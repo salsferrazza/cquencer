@@ -35,11 +35,17 @@ class InventoryDestination(Destination):
         print(f"msg {seq}")
         try:
             inv = msg.split()
+
+            if len(inv) < 3:
+                print(f"malformed message received: {msg}")
+                return
+
             msg_type = inv[0].decode('utf-8')
             if msg_type == "I":
                 self.on_inventory(inv[2].decode('utf-8'), int(inv[1]))
             elif msg_type == "D":
                 self.on_inventory_delta(inv[2].decode('utf-8'), int(inv[1]))
+
         except Exception as exc:
             traceback.print_exc()
             print(f"msg {seq} was unparseable: {exc} {msg}")

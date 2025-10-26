@@ -22,9 +22,12 @@ class Warehouse(InventoryDestination, SenderMixin):
 
     def on_order(self, sku, qty):
         current_level = self.inventory.get(sku)
-        if qty <= current_level:
-            self.inventory.apply(sku, qty * -1)
-            self.send(" ".join(["D", str(qty * -1), sku]))
+        if current_level is not None:
+            if qty <= current_level:
+                self.inventory.apply(sku, qty * -1)
+                self.send(" ".join(["D", str(qty * -1), sku]))
+            else:
+                print(f"unknown sku: {sku}")
 
     def on_inventory_delta(self, sku, delta):
         # ignore message if it was sent by me, since local
