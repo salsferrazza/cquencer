@@ -40,5 +40,5 @@ class SenderMixin:
             print(f"couldn't get sequence # response for {msg}: {ve}")
         except BrokenPipeError as bpe:
             print(f"got broken pipe, reconnecting")
-            self.connect()
+            self.connect(self.host, self.remote_port)
 
