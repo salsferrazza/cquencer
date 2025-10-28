@@ -1,5 +1,6 @@
 import sys
 import socket
+from netstring import Connection, NEED_DATA, CONNECTION_CLOSED, decode
 
 class SenderMixin:
 
@@ -7,6 +8,7 @@ class SenderMixin:
     msgbuf = bytearray(21)
     
     def connect(self, host, remote_port):
+        self.conn = Connection()
         self.port = remote_port
         self.host = host
         self.client_socket = socket.socket()
@@ -19,9 +21,24 @@ class SenderMixin:
         self.client_socket.sendall(msg.encode())
 
         try: 
-            bytes = self.client_socket.recv(1024)
-            resp = bytes.decode('utf-8')
-            self.last_sequence_sent = int(resp)
-            print(f"submitted #{self.last_sequence_sent}")
+            res = self.conn.receive_data(self.client_socket.recv(1024))
+            while res == NEED_DATA:
+                print("need more data")
+                res = self.conn.receive_data(self.client_socket.recv(1024))
+            resp = self.conn.next_event()
+            print(resp)
+            if isinstance(resp, bytes):
+                self.last_sequence_sent = int(resp)
+                print(f"submitted #{self.last_sequence_sent}")
+            else:
+                if resp == NEED_DATA:
+                    print("need more data")
+                elif resp == CONNECTION_CLOSED:
+                    print("could not parse netstring")
+                    self.connect(self.host, self.remote_port)
         except ValueError as ve:
             print(f"couldn't get sequence # response for {msg}: {ve}")
+        except BrokenPipeError as bpe:
+            print(f"got broken pipe, reconnecting")
+            self.connect()
+

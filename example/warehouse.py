@@ -32,6 +32,8 @@ class Warehouse(InventoryDestination, SenderMixin):
     def on_inventory_delta(self, sku, delta):
         # ignore message if it was sent by me, since local
         # inventory is already updated
+        print(self.last_sequence_number)
+        print(self.last_sequence_sent)
         if self.last_sequence_number != self.last_sequence_sent:
             super().on_inventory_delta(sku, delta)
         else:
