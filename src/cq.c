@@ -313,7 +313,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // if there is no content, return the current sequence number and bail
     if (bytes_read <= 1) {
       sprintf(sequence_chars, "%lu", sequence_num);
-      memcpy(conn->write_buffer, sequence_chars, strlen(sequence_chars));
+      sprintf(conn->write_buffer, "%lu:%s,", strlen(sequence_chars), sequence_chars);
       conn->state = CONN_STATE_RES;
       return;
     }

@@ -1,6 +1,8 @@
 import random
-from inventory import InventoryDestination
 from sender import SenderMixin
+from time import sleep
+
+from inventory import InventoryDestination
 
 class PointOfSale(InventoryDestination, SenderMixin):
     def __init__(self, group, port, remote_port):
@@ -20,7 +22,8 @@ class PointOfSale(InventoryDestination, SenderMixin):
     def generate_orders(self, limit):
         if limit == -1:
             while True:
-                self.send_random_order()   
+                self.send_random_order()
+                time.sleep(3)
         elif limit > 0:
             while limit > 0:
                 self.send_random_order()
