@@ -39,9 +39,9 @@ This instructs the warehouse to process an order for the demanded quantity of th
 
 ## Efficient representation of message payloads and encodings
 
-Stock exchange binary feeds are one example. Everyone knows `AAPL` but if you are talking directly to the exchange you better know the `SecuritryId` as well, which is expressed as an integer. The exchange provides the symbol reference data en masse before trading sessions, then individually if a specific entity mutates intra-session. 
+Stock exchange binary feeds are one example. Everyone knows `AAPL` but if you are talking directly to the exchange you better know the `SecurityId` as well, which is expressed as an integer. The exchange provides the symbol reference data en masse before trading sessions, then individually if a specific entity mutates intra-session. 
 
-The largest message in Nasdaq's TotalView ITCH 5.0 feed is 50 bytes. A JSON encoding of a semantically identical message could be in the range of 300-400 bytes. The self-describing schema embedded with the encoding degrades the signal-to-byte ratio considerably. We call this class of encoding "high-context". 
+The largest message in Nasdaq's TotalView ITCH 5.0 feed is 50 bytes. A JSON encoding of a semantically identical message could be in the range of 300-400 bytes. The self-describing schema embedded with the encoding degrades the signal-to-byte ratio considerably. We call this class of encoding "high-context", with YAML being the cleanest shirt in a laundry basket dominated by XML and JSON. 
 
 As Ron Minsky of Jane Street puts it: "[these] messages actually pack a lot of punch, right? Part of the way that you optimize the system like this is you try and have a fairly concise encoding of the data that you actually stick on the network. So you can have pretty high transaction rates with a fairly small number of bytes per transaction."
 
@@ -58,6 +58,7 @@ The sequenced stream abstraction typically does not need to leak into the applic
 ## One process, one thread
 
 Sequencer architectures are a solution to coordinate _inherently sequential_ workloads. These are the polar opposite of map/reduce style embarrassingly parallel workloads. Applications designed with sequencer architectures coordinate events coming from distributed network peers that all require a consistent view of single state machine, yet mutable by sequenced stream publishers.
+
 
 
 
