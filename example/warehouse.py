@@ -27,7 +27,9 @@ class Warehouse(InventoryDestination, SenderMixin):
                 self.inventory.apply(sku, qty * -1)
                 self.send(" ".join(["D", str(qty * -1), sku]))
             else:
-                print(f"unknown sku: {sku}")
+                print(f"Insufficient inventory to fulflll {qty} of {sku}: {current_level}")
+        else:
+            print(f"unknown sku: {sku}")
 
     def on_inventory_delta(self, sku, delta):
         # ignore message if it was sent by me, since local
