@@ -19,14 +19,12 @@ class SenderMixin:
 
     def send(self, msg):
         self.client_socket.sendall(msg.encode())
-
         try: 
             res = self.conn.receive_data(self.client_socket.recv(1024))
             while res == NEED_DATA:
                 print("need more data")
                 res = self.conn.receive_data(self.client_socket.recv(1024))
             resp = self.conn.next_event()
-            print(resp)
             if isinstance(resp, bytes):
                 self.last_sequence_sent = int(resp)
                 print(f"submitted #{self.last_sequence_sent}")

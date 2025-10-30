@@ -12,20 +12,19 @@ class PointOfSale(InventoryDestination, SenderMixin):
         self.connect("localhost", remote_port)
         print("pos init done")
         
-    def send_random_order(self):
-        sku_count = len(self.inventory.get(sku=None))
-        print(f"sku count {sku_count}")
+    def send_random_order(self):        
+        sku_count = self.inventory.count()
         if sku_count > 0:
-            
-            sku = random.choice(list(self.inventory.get(sku=None)))
-            qty = random.randint(1, self.inventory.get(sku))
+            sku = random.choice(self.inventory.skus())
+            skuqty = self.inventory.get(sku)
+            qty = random.randint(1, skuqty) \
+              if skuqty > 1 else 1
             self.send_order(sku, qty)        
         
     def generate_orders(self):
-        print("generating orders")
         while True:
             self.send_random_order()
-            sleep(3)
+            sleep(1)
                 
     def send_order(self, sku, quantity):
         current_stock = self.inventory.get(sku)

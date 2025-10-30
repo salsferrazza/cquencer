@@ -6,6 +6,12 @@ class InventoryCollection():
     def __init__(self):
         self.inventory = {}
 
+    def count(self):
+        return len(self.inventory.keys())
+
+    def skus(self):
+        return list(self.inventory.keys())
+
     def get(self, sku):
         if sku is not None:
             return self.inventory.get(sku)
@@ -32,7 +38,6 @@ class InventoryDestination(Destination):
             
     def on_message(self, seq, msg):
         super().on_message(seq, msg)
-        print(f"msg {seq}")
         try:
             inv = msg.split()
 
@@ -58,4 +63,4 @@ class InventoryDestination(Destination):
         level = self.inventory.get(sku)
         self.inventory.apply(sku, delta)
         new_level = self.inventory.get(sku)
-        print(f"{sku} {delta} {level} -> {new_level}")
+        print(f"{sku} {level} {delta} -> {new_level}")

@@ -11,7 +11,6 @@ class Warehouse(InventoryDestination, SenderMixin):
         print(f"current sequence # is {self.last_sequence_number}")
         
     def on_message(self, seq, msg):
-        print(f"warehouse on_message {seq}")
         super().on_message(seq, msg)
         msg_fields = msg.split()
         msg_type = msg_fields[0].decode('utf-8')
@@ -34,8 +33,6 @@ class Warehouse(InventoryDestination, SenderMixin):
     def on_inventory_delta(self, sku, delta):
         # ignore message if it was sent by me, since local
         # inventory is already updated
-        print(self.last_sequence_number)
-        print(self.last_sequence_sent)
         if self.last_sequence_number != self.last_sequence_sent:
             super().on_inventory_delta(sku, delta)
         else:
