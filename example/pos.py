@@ -15,7 +15,8 @@ class PointOfSale(InventoryDestination, SenderMixin):
     def send_random_order(self):        
         sku_count = self.inventory.count()
         if sku_count > 0:
-            sku = random.choice(self.inventory.skus())
+            sku = random.choice(self.inventory.skus()) \
+              if sku_count > 1 else list(self.inventory.skus)[0]
             skuqty = self.inventory.get(sku)
             qty = random.randint(1, skuqty) \
               if skuqty > 1 else 1
@@ -24,12 +25,12 @@ class PointOfSale(InventoryDestination, SenderMixin):
     def generate_orders(self):
         while True:
             self.send_random_order()
-            sleep(1)
+            sleep(.1)
                 
     def send_order(self, sku, quantity):
         current_stock = self.inventory.get(sku)
 
-        if current_stock is None:
+        if current_stock is None:            
             return False
 
         if quantity <= current_stock:
