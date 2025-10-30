@@ -26,12 +26,6 @@ class PointOfSale(InventoryDestination, SenderMixin):
         while True:
             self.send_random_order()
             sleep(3)
-#        if limit is None or limit == -1:
-#        elif limit > 0:
-#            while limit > 0:
-#                self.send_random_order()
-#                limit -= 1
-#                sleep(3)
                 
     def send_order(self, sku, quantity):
         current_stock = self.inventory.get(sku)
