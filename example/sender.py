@@ -8,6 +8,16 @@ class SenderMixin:
     msgbuf = bytearray(21)
     
     def connect(self, host, remote_port):
+        """Connects to the cquencer TCP port for sending unsequenced messages
+
+        Parameters
+        ----------
+        host: 
+            The host running cq
+        radius : float
+            The TCP listen port on the cq host
+        """
+
         self.conn = Connection()
         self.port = remote_port
         self.host = host
@@ -18,6 +28,13 @@ class SenderMixin:
         
 
     def send(self, msg):
+        """Sends an unsequenced message to cquencer
+
+        Parameters
+        ----------
+        msg: 
+            The message payload to be sequenced
+        """
         self.client_socket.sendall(msg.encode())
         try: 
             res = self.conn.receive_data(self.client_socket.recv(1024))

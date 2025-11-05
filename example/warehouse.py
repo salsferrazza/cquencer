@@ -6,9 +6,8 @@ class Warehouse(InventoryDestination, SenderMixin):
         print("warehouse init")
         self.remote_port = remote_port
         self.connect("localhost", remote_port)
-        print("warehosue init done")
+        print("warehouse init done")
         super().__init__(group, port)
-        print(f"current sequence # is {self.last_sequence_number}")
         
     def on_message(self, seq, msg):
         super().on_message(seq, msg)
@@ -23,17 +22,9 @@ class Warehouse(InventoryDestination, SenderMixin):
         current_level = self.inventory.get(sku)
         if current_level is not None:
             if qty <= current_level:
-                self.inventory.apply(sku, qty * -1)
                 self.send(" ".join(["D", str(qty * -1), sku]))
             else:
                 print(f"Insufficient inventory to fulflll {qty} of {sku}: {current_level}")
         else:
             print(f"unknown sku: {sku}")
 
-    def on_inventory_delta(self, sku, delta):
-        # ignore message if it was sent by me, since local
-        # inventory is already updated
-        if self.last_sequence_number != self.last_sequence_sent:
-            super().on_inventory_delta(sku, delta)
-        else:
-            print(f"ignoring #{self.last_sequence_number}")

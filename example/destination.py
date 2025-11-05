@@ -18,6 +18,7 @@ class Destination:
         mreq = struct.pack('4sl', socket.inet_aton(self.group), socket.INADDR_ANY)
 
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        print(f"current sequence # is {self.last_sequence_number}")
         print("destination init done")
         
     def listen(self):

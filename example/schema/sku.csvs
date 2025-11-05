@@ -1,0 +1,7 @@
+version 1.0
+@separator ' '
+@totalColumns 3
+@noHeader
+message_type
+quantity
+sku

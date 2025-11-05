@@ -16,7 +16,7 @@ class PointOfSale(InventoryDestination, SenderMixin):
         sku_count = self.inventory.count()
         if sku_count > 0:
             sku = random.choice(self.inventory.skus()) \
-              if sku_count > 1 else list(self.inventory.skus)[0]
+              if sku_count > 1 else self.inventory.skus()[0]
             skuqty = self.inventory.get(sku)
             qty = random.randint(1, skuqty) \
               if skuqty > 1 else 1
