@@ -241,7 +241,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        handle_connection_io(conn, udp_fd, multicast_addr);
+        handle_connection_io(conn);
 
 	// send output buffer over UDP
         if (strlen(udp_output_buffer) > 0) {
@@ -293,7 +293,7 @@ static bool accept_new_connection(void) {
   return true;
 }
 
-static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr) {
+static void handle_connection_io(Connection *conn) {
   if (conn->state == CONN_STATE_REQ) {
 
     int bytes_read =
@@ -310,7 +310,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
     
-    // if there is no content, return the current sequence number and bail
+    // if there is no content, just return the current sequence number
     if (bytes_read <= 1) {
       sprintf(sequence_chars, "%lu", sequence_num);
       sprintf(conn->write_buffer, "%lu:%s,", strlen(sequence_chars), sequence_chars);

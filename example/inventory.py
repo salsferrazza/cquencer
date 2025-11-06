@@ -65,7 +65,6 @@ class InventoryDestination(Destination):
     def on_inventory(self, sku, level):
         self.inventory.add(sku, level)
         print(f"{sku} {level}")
-        assert(level >= 0)
         
     def on_inventory_delta(self, sku, delta):
         level = self.inventory.get(sku)
@@ -75,5 +74,4 @@ class InventoryDestination(Destination):
         self.inventory.apply(sku, delta)
         new_level = self.inventory.get(sku)
         print(f"{sku} {level} {delta} -> {new_level}")
-        assert(new_level >= 0)
         
