@@ -24,11 +24,13 @@ class InventoryCollection():
         self.inventory[sku] = stock_level
 
     def remove(self, sku):
-        self.inventory[sku] = None
+        del self.inventory[sku]
         
     def apply(self, sku, delta):
         current_level = self.inventory.get(sku) or 0
-        self.inventory[sku] = current_level + delta
+        new_level = current_level + delta
+        self.inventory[sku] = new_level
+        return new_level
         
 class InventoryDestination(Destination):
     def __init__(self, group, port):
@@ -71,7 +73,7 @@ class InventoryDestination(Destination):
         if level is None:
             self.inventory.add(sku, 0)
 
-        self.inventory.apply(sku, delta)
-        new_level = self.inventory.get(sku)
+        new_level = self.inventory.apply(sku, delta)
         print(f"{sku} {level} {delta} -> {new_level}")
-        
+        if new_level == 0:
+            self.inventory.remove(sku)
