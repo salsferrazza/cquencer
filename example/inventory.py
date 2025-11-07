@@ -76,7 +76,9 @@ class InventoryDestination(Destination):
     def on_inventory_delta(self, sku, delta):
         level = self.inventory.get(sku)
         if level is None:
-            self.inventory.add(sku, 0)
+            print(f"Ignoring delta on depleted SKU {sku}")
+            return
+#            self.inventory.add(sku, 0)
 
         new_level = self.inventory.apply(sku, delta)
         print(f"{sku} {level} {delta} -> {new_level}")
