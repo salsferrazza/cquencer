@@ -35,6 +35,7 @@ typedef struct {
 static bool accept_new_connection(void);
 static void handle_connection_io(Connection *conn);
 static void now(char* datestr);
+static int secs(void);
 static void logfile_name(char* logname);
 static void cleanup(void);
 static void handle_sigint(int sig);

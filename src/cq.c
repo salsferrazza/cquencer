@@ -25,6 +25,12 @@
 #include "./vector.h"
 #include "./cq.h"
 
+// startup time in UNIX seconds
+int started = 0;
+
+// message rate
+float mps = 0.0;
+
 // message log file pointer
 FILE *logptr;
 
@@ -154,6 +160,8 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+  started = secs();
+  
   fprintf(stderr, "Listening on port %s...\n", listen_port);
   fprintf(stderr, "Current sequence number is %ld\n", sequence_num);
   
@@ -259,6 +267,7 @@ int main(int argc, char *argv[]) {
           // reset values for next iteration
           memset(udp_output_buffer, 0, BUFFER_LENGTH);
         }
+	mps = (sequence_num / (float) (secs() - started));	
       }
     }
 
@@ -375,6 +384,12 @@ static void logfile_name(char *logname) {
   sprintf((char *) pidstr, "%d", pid);
   now((char *) curstamp);
   sprintf(logname, "%s-%s.msg", pidstr, curstamp);
+}
+
+static int secs(void) {
+  timespec tv;
+  if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
+  return tv.tv_sec;  
 }
 
 static void now(char *datestr) {
