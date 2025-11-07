@@ -8,9 +8,9 @@ from threading import Thread
 
 def main():
 
-    pos1 = PointOfSale(sys.argv[1], sys.argv[2], remote_port=int(sys.argv[3])
-    pos2 = PointOfSale(sys.argv[1], sys.argv[2], remote_port=int(sys.argv[3])
-    pos3 = PointOfSale(sys.argv[1], sys.argv[2], remote_port=int(sys.argv[3])
+    pos1 = PointOfSale(sys.argv[1], sys.argv[2], remote_port=int(sys.argv[3]))
+    pos2 = PointOfSale(sys.argv[1], sys.argv[2], remote_port=int(sys.argv[3]))
+    pos3 = PointOfSale(sys.argv[1], sys.argv[2], remote_port=int(sys.argv[3]))
 
     with ThreadPoolExecutor(max_workers=6) as posexec:
         posexec.submit(pos1.generate_orders)
