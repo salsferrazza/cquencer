@@ -4,7 +4,6 @@ from inventory import InventoryDestination
 from warehouse import Warehouse
 from pos import PointOfSale
 from concurrent.futures import ThreadPoolExecutor
-from threading import Thread
 
 NUM_POS = 5
 WORKERS = NUM_POS * 2
