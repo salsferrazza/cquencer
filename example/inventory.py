@@ -1,4 +1,5 @@
 import pickle
+import sys
 import traceback
 from destination import Destination
 from sender import SenderMixin
@@ -37,6 +38,10 @@ class InventoryDestination(Destination):
         super().__init__(group, port)
         self.inventory = InventoryCollection()
 
+    def trap(self, signum, frame):
+        print(str(self.inventory.inventory))
+        sys.exit(1)
+        
     def get_skus(self):
         return self.inventory.get(sku=None)
             
