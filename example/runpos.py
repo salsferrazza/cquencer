@@ -1,7 +1,6 @@
 import signal
 import sys
 from inventory import InventoryDestination
-from warehouse import Warehouse
 from pos import PointOfSale
 from concurrent.futures import ThreadPoolExecutor
 
