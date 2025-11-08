@@ -6,12 +6,11 @@ _A central sequence number server_
 The `cquencer` is a standalone central sequence number server, embodying the "Fixed Sequencer" 
 ordering mechanism described by [Défago, et al](https://infoscience.epfl.ch/server/api/core/bitstreams/068f8add-50ce-4216-b750-3cde412ee397/content) (2004). 
 
-<img width="1786" height="1806" alt="image" src="https://github.com/user-attachments/assets/12104b42-c239-44ce-bd40-a135e481fe7c" />
+<img width="893" height="903" alt="image" src="https://github.com/user-attachments/assets/12104b42-c239-44ce-bd40-a135e481fe7c" />
 
 
-
-`cquencer` adheres to a simple protocol and is payload-agnostic. It listens for connections over TCP on a local
-address and port. Each message received over that port is assigned a
+`cquencer` adheres to a simple protocol and is payload-agnostic. It
+listens for connections over TCP on a local address and port. Each message received over that port is assigned a
 sequence number and both the sequence number and the original message
 payload are published to the specified multicast group over UDP. 
 
@@ -40,21 +39,27 @@ send the sequenced bytes to its specified multicast group.
 The `cquencer` accepts any data over its TCP port as a discrete
 message.
 
-TCP clients, upon sequencing of the message, are returned an ASCII-encoded sequence number as the only response. 
+TCP clients, upon sequencing of the message, are returned an
+ASCII-encoded sequence number as the only response. Messages sent with
+no content are returned the current sequence number and do not mutate
+the stream.
 
-The message sent to the multicast group is encoded as a nested [netstring](https://en.wikipedia.org/wiki/Netstring). The entire contents of the multicast message is itself a netstring that is composed of two child netstrings. The first child netstring contains the sequence number. The second child netstring contains the original message bytes, undisturbed. For example:
+The message sent to the multicast group is framed as a nested [netstring](https://en.wikipedia.org/wiki/Netstring). The entire contents of the multicast message is itself a netstring that is composed of two child netstrings. The first child netstring contains the sequence number. The second child netstring contains the original message bytes, undisturbed. For example:
 
 TCP Sender:
 ```
 % bin/sendr 3001
+? <RET> 
+# 5:85636,
 ? hello world
-# 83761
+# 5:88485,
+? 
 ```
 
 UDP Destination:
 ```
 % bin/destn 239.0.0.1 1234
-23:5:83761,11:hello world,,
+23:5:88485,11:hello world,,
 ```
 
 ## Why netstring?
@@ -107,9 +112,16 @@ total 248
 
 ## Usage
 
-- `cq` is the sequencer process. 
+- `cq` is the sequencer binary. 
 
-`cq <TCP listen port> <multicast group IP> <multicast group port>`
+```
+cq: a fixed sequencer for atomic broadcast
+
+Usage: cq <tcp port> <multicast group> <multicast port>
+  Messages submitted over TCP are multicast
+  to the specified group and port, using nested
+  netstring framing
+  ```
 
 - `destn` is an example multicast destination that logs each message's
 sequence number and size
@@ -119,7 +131,7 @@ sequence number and size
 - `sendr` is a shell that allows for interactive submission of
   plain-text messages.
 
-`sendr <IP of sequencer process> <port of sequencer process>` 
+`sendr <port of sequencer process>` 
 
 ## Acknowledgements
 
