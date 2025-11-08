@@ -18,6 +18,12 @@ class Warehouse(InventoryDestination, SenderMixin):
             sku = msg_fields[2].decode('utf-8')
             self.on_order(sku, qty)
 
+    def on_inventory_delta(self, sku, qty):
+        if self.last_sequence_number != self.last_sequence_sent:
+            super().on_inventory_delta(sku, qty)
+        else:
+            print(f"Ignoring own msg #{self.last_sequence_number}")
+            
     def on_order(self, sku, qty):
         current_level = self.inventory.get(sku)
 

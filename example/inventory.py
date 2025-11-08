@@ -29,6 +29,7 @@ class InventoryCollection():
         
     def apply(self, sku, delta):
         current_level = self.inventory.get(sku) or 0
+        assert(current_level + delta >= 0)
         new_level = current_level + delta
         self.inventory[sku] = new_level
         return new_level
@@ -80,6 +81,7 @@ class InventoryDestination(Destination):
             return
 
         new_level = self.inventory.apply(sku, delta)
-        print(f"{sku} {level} {delta} -> {new_level}")
+        print(f"#{self.last_sequence_number} {sku} {level} {delta} -> {new_level}")
         if new_level == 0:
+            print(f"Removing depleted SKU {sku} from inventory")
             self.inventory.remove(sku)
