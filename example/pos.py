@@ -20,7 +20,10 @@ class PointOfSale(InventoryDestination, SenderMixin):
             skuqty = self.inventory.get(sku)
             qty = random.randint(1, skuqty) \
               if skuqty > 1 else 1
-            self.send_order(sku, qty)        
+            self.send_order(sku, qty)
+        else:
+            print("No SKUs left in stock")
+            sleep(10)
         
     def generate_orders(self):
         while True:
