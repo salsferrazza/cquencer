@@ -21,7 +21,8 @@ class Warehouse(InventoryDestination, SenderMixin):
     def on_order(self, sku, qty):
         current_level = self.inventory.get(sku)
 
-        # Only decrement if there's sufficient inventory for the order
+        # Only send the network a decrement
+        # if there exists sufficient inventory
         if current_level is not None:
             if qty <= current_level:
                 self.send(" ".join(["D", str(qty * -1), sku]))

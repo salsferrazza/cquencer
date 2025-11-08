@@ -63,14 +63,18 @@ char seq_ns[25]; // 20 + strlen("20:,") + null terminator
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
-// std::vector<Connection> connections;
 
 // a vector of pollfd structs to store the file descriptors that we want to
 // poll for events
 Vector *poll_fds = NULL;
 
 int main(int argc, char *argv[]) {
-   
+
+  if (argc < 4) {
+    usage();
+    exit(0);
+  }
+    
   atexit(cleanup);
   signal(SIGPIPE, SIG_IGN);
   signal(SIGINT, handle_sigint);
@@ -162,23 +166,20 @@ int main(int argc, char *argv[]) {
 
   started = secs();
   
-  fprintf(stderr, "Listening on port %s...\n", listen_port);
-  fprintf(stderr, "Current sequence number is %ld\n", sequence_num);
-  
   // initialize connections vector
   connections = vector_init(sizeof(Connection), 0);
 
   // initialize the poll_fds vector
   poll_fds = vector_init(sizeof(pollfd), 0);
 
-  /** SET UP MULTICAST FOR PUBLISHING **/
-  
+  // multicast setup for publishing  
   sockaddr_in multicast_addr;
   memset(&multicast_addr, 0, sizeof(multicast_addr));
   multicast_addr.sin_family = AF_INET;
   multicast_addr.sin_addr.s_addr = inet_addr(send_group);
   multicast_addr.sin_port = htons(send_port);
 
+  // fd for outbound UDP
   udp_fd = socket(multicast_addr.sin_family, SOCK_DGRAM, 0);
   if (udp_fd < 0) {
     perror("socket()");
@@ -186,7 +187,6 @@ int main(int argc, char *argv[]) {
   }
   
   // the event loop
-
   while (true) {
     // clear the poll_fds vector
     vector_clear(poll_fds);
@@ -267,6 +267,7 @@ int main(int argc, char *argv[]) {
           // reset values for next iteration
           memset(udp_output_buffer, 0, BUFFER_LENGTH);
         }
+	// re-evaluate message rate
 	mps = (sequence_num / (float) (secs() - started));	
       }
     }
@@ -278,6 +279,17 @@ int main(int argc, char *argv[]) {
   }
   return EXIT_SUCCESS;
 }
+
+static void usage(void) {
+   static const char *usage[] = {
+      "cq: a fixed sequencer for atomic broadcast",
+      "",
+      "Usage: cq <tcp port> <multicast group> <multicast port>",
+      "  Messages submitted over TCP are multicast",
+      "  to the specified group and port, using nested",
+      "  netstring framing.",
+      NULL };
+   for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]); }
 
 static bool accept_new_connection(void) {
   // accept
@@ -358,6 +370,7 @@ static void handle_connection_io(Connection *conn) {
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
 
+    // reset variables for next iteration
     memset(seq_ns, 0, strlen(seq_ns));
     memset(payload_ns, 0, strlen(payload_ns));
     total_msg_len = 0;
