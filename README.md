@@ -123,8 +123,9 @@ Usage: cq <tcp port> <multicast group> <multicast port>
   netstring framing
   ```
 
-- `destn` is an example multicast destination that logs each message's
-sequence number and size
+- `destn` is an example multicast destination that logs all received
+  data to `STDOUT`
+
 
 `destn <multicast group IP> <multicast group port>`
 
