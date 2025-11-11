@@ -56,7 +56,7 @@ char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 // UDP output buffer
 char udp_output_buffer[BUFFER_LENGTH];
 
-//
+// storage necessary for each iteration of sequencing
 int total_msg_len, payload_len, seq_len = 0;
 char payload_ns[BUFFER_LENGTH];
 char seq_ns[25]; // 20 + strlen("20:,") + null terminator 
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 
   if (argc < 4) {
     usage();
-    exit(0);
+    exit(1);
   }
     
   atexit(cleanup);
