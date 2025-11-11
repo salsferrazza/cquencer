@@ -18,19 +18,24 @@ class Warehouse(InventoryDestination, SenderMixin):
             sku = msg_fields[2].decode('utf-8')
             self.on_order(sku, qty)
 
-    def on_inventory_delta(self, sku, qty):
-        if self.last_sequence_number != self.last_sequence_sent:
-            super().on_inventory_delta(sku, qty)
-        else:
-            print(f"Ignoring own msg #{self.last_sequence_number}")
-            
+    def on_inventory_delta(self, sku, delta):
+        # short circuit execution of this method, since
+        # the warehouse is the sole source-of-truth
+        # for inventory updates, and the local inventory
+        # is being updated directly within on_order()
+        # before the inventory detla message is sent to
+        # the sequenced stream
+        pass
+    
     def on_order(self, sku, qty):
         current_level = self.inventory.get(sku)
 
         # Only send the network a decrement
         # if there exists sufficient inventory
         if current_level is not None:
-            if qty <= current_level:
+            print(f"{sku} wants: {qty}, has: {current_level}, enough? {current_level >= qty}")
+            if current_level >= qty:
+                self.inventory.apply(sku, qty * -1) # obviates call to on_inventory_delta
                 self.send(" ".join(["D", str(qty * -1), sku]))
             else:
                 print(f"Insufficient inventory to fulflll {qty} of {sku}: {current_level}")
