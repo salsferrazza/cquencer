@@ -28,9 +28,6 @@
 // startup time in UNIX seconds
 int started = 0;
 
-// message rate
-float mps = 0.0;
-
 // message log file pointer
 FILE *logptr;
 
