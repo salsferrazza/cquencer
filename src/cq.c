@@ -233,6 +233,8 @@ int main(int argc, char *argv[]) {
     // poll for active fds
     rv = poll(vector_data(poll_fds), vector_length(poll_fds), -1);
     if (rv == -1) {
+      // this may happen when a signal interrupts execution,
+      // so fast-forward to the next iteration of the loop
       continue;
     }
 
