@@ -33,9 +33,9 @@ class Warehouse(InventoryDestination, SenderMixin):
         # Only send the network a decrement
         # if there exists sufficient inventory
         if current_level is not None:
-            print(f"{sku} wants: {qty}, has: {current_level}, enough? {current_level >= qty}")
+            print(f"#{self.last_sequence_number} {sku} wants: {qty}, has: {current_level}, enough? {current_level >= qty}")
             if current_level >= qty:
-                self.inventory.apply(sku, qty * -1) # obviates call to on_inventory_delta
+                self.inventory.apply(sku, qty * -1) # obviates call to on_inventory_delta()
                 self.send(" ".join(["D", str(qty * -1), sku]))
             else:
                 print(f"Insufficient inventory to fulflll {qty} of {sku}: {current_level}")

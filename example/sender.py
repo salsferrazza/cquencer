@@ -14,13 +14,17 @@ class SenderMixin:
         ----------
         host: 
             The host running cq
-        radius : float
+        remote_port : float
             The TCP listen port on the cq host
         """
 
+        # for stream-based netstring processing
         self.conn = Connection()
+        
         self.port = remote_port
         self.host = host
+
+        # TCP connection to the sequencer
         self.client_socket = socket.socket()
         self.client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
@@ -35,6 +39,7 @@ class SenderMixin:
         msg: 
             The message payload to be sequenced
         """
+        
         self.client_socket.sendall(msg.encode())
         try: 
             res = self.conn.receive_data(self.client_socket.recv(1024))

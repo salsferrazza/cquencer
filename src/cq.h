@@ -39,6 +39,7 @@ static int secs(void);
 static void logfile_name(char* logname);
 static void cleanup(void);
 static void handle_sigint(int sig);
+static void handle_sigusr1(int sig);
 static void usage(void);
 
 // to store the address information of the server

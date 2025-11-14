@@ -77,8 +77,9 @@ int main(int argc, char *argv[]) {
     
   atexit(cleanup);
   signal(SIGPIPE, SIG_IGN);
+  signal(SIGUSR1, handle_sigusr1);
   signal(SIGINT, handle_sigint);
-
+    
   setbuf(stdout, NULL); // unbuffer STDOUT
 
   char* listen_port = argv[1];
@@ -232,7 +233,7 @@ int main(int argc, char *argv[]) {
     // poll for active fds
     rv = poll(vector_data(poll_fds), vector_length(poll_fds), -1);
     if (rv == -1) {
-      perror("poll()");
+      continue;
     }
 
     // process active connections
@@ -440,6 +441,10 @@ static void cleanup(void) {
   if (poll_fds != NULL) {
     vector_free(poll_fds);
   }
+}
+
+static void handle_sigusr1(int sig) {
+  fprintf(stderr, "mps: %f\n", mps);
 }
 
 static void handle_sigint(int sig) {
