@@ -270,8 +270,6 @@ int main(int argc, char *argv[]) {
           // reset values for next iteration
           memset(udp_output_buffer, 0, BUFFER_LENGTH);
         }
-        // re-evaluate message rate
-        mps = (sequence_num / (float) (secs() - started));      
       }
     }
 
@@ -416,6 +414,10 @@ static void now(char *datestr) {
   sprintf(datestr, "%d%09d", sec, nsec);
 }
 
+static float get_mps(void) {
+  return (sequence_num / (float) (secs() - started));      
+}
+
 static void cleanup(void) {
   // close the socket file descriptor
   if (tcp_fd != -1) {
@@ -446,7 +448,7 @@ static void cleanup(void) {
 }
 
 static void handle_sigusr1(int sig) {
-  fprintf(stderr, "mps: %f, seq: %lu, tcp: %lu\n", mps, sequence_num, vector_length(connections));
+  fprintf(stderr, "mps: %f, seq: %lu, tcp: %lu\n", get_mps(), sequence_num, vector_length(connections));
 }
 
 static void handle_sigint(int sig) {
