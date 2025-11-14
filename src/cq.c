@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
 
         handle_connection_io(conn);
 
-	// send output buffer over UDP
+        // send output buffer over UDP
         if (strlen(udp_output_buffer) > 0) {
           int nbytes = sendto(
                               udp_fd,
@@ -270,8 +270,8 @@ int main(int argc, char *argv[]) {
           // reset values for next iteration
           memset(udp_output_buffer, 0, BUFFER_LENGTH);
         }
-	// re-evaluate message rate
-	mps = (sequence_num / (float) (secs() - started));	
+        // re-evaluate message rate
+        mps = (sequence_num / (float) (secs() - started));      
       }
     }
 
