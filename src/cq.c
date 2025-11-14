@@ -446,7 +446,7 @@ static void cleanup(void) {
 }
 
 static void handle_sigusr1(int sig) {
-  fprintf(stderr, "mps: %f\n", mps);
+  fprintf(stderr, "mps: %f, seq: %lu, tcp: %lu\n", mps, sequence_num, vector_length(connections));
 }
 
 static void handle_sigint(int sig) {
