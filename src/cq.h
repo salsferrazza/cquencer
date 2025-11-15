@@ -41,7 +41,7 @@ typedef struct {
   int fd;
   enum ConnectionState state;
   char read_buffer[MAX_PAYLOAD_LENGTH];
-  char write_buffer[MAX_FRAME_LENGTH];
+  char write_buffer[24]; // max size of netstrung sequence number
 } Connection;
 
 static bool accept_new_connection(void);
