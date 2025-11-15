@@ -51,11 +51,11 @@ unsigned long sequence_num = 0;
 char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 
 // UDP output buffer
-char udp_output_buffer[BUFFER_LENGTH];
+char udp_output_buffer[MAX_FRAME_LENGTH + 1];
 
 // storage necessary for each iteration of sequencing
 int total_msg_len, payload_len, seq_len = 0;
-char payload_ns[BUFFER_LENGTH];
+char payload_ns[MAX_PAYLOAD_LENGTH + 1];
 char seq_ns[25]; // 20 + strlen("20:,") + null terminator 
 
 // a vector of Connection structs to store the active connections
@@ -161,8 +161,6 @@ int main(int argc, char *argv[]) {
     perror("listen()");
     return EXIT_FAILURE;
   }
-
-  started = secs();
   
   // initialize connections vector
   connections = vector_init(sizeof(Connection), 0);
@@ -183,6 +181,8 @@ int main(int argc, char *argv[]) {
     perror("socket()");
     return 1;
   }
+
+  started = secs();
   
   // the event loop
   while (true) {
@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
             perror("sendto");
           }
           // reset values for next iteration
-          memset(udp_output_buffer, 0, BUFFER_LENGTH);
+          memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
         }
       }
     }

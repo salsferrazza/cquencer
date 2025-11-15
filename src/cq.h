@@ -1,14 +1,26 @@
-// the size of byte prefixes
-#define PREFIX_LENGTH sizeof(int)
-
-// the max number of connections that can wait in the queue
+// the max number of TCP connections that can wait in the queue
 #define CONNECTION_BACKLOG 512
 
-// the maximum size of a message
-#define MAX_MESSAGE_LENGTH 1440
+// the maximum size of a frame
+#define MAX_FRAME_LENGTH 1500 
 
-// the maximum size of a message (including prefix)
-#define BUFFER_LENGTH PREFIX_LENGTH + sizeof(long) + MAX_MESSAGE_LENGTH
+/**
+
+Components of the maximum payload size are:
+
+1) The maximum size of a sequence number netstring, which is 24, i.e.:
+
+                     20:18446744073709551615,
+
+2) The maximum size of the payload netstring formatting, which is 6:
+           
+                            1468:,
+   
+3) The maximum size of the frame netstring formatting, which is also 6   
+
+ */
+
+#define MAX_PAYLOAD_LENGTH MAX_FRAME_LENGTH - 36
 
 enum ConnectionState {
   CONN_STATE_REQ = 0,
@@ -28,8 +40,8 @@ typedef struct Vector Vector;
 typedef struct {
   int fd;
   enum ConnectionState state;
-  char read_buffer[BUFFER_LENGTH];
-  char write_buffer[BUFFER_LENGTH];
+  char read_buffer[MAX_PAYLOAD_LENGTH];
+  char write_buffer[MAX_FRAME_LENGTH];
 } Connection;
 
 static bool accept_new_connection(void);
