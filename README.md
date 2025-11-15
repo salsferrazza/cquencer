@@ -6,8 +6,7 @@ _A central sequence number server_
 The `cquencer` is a standalone central sequence number server, embodying the "Fixed Sequencer" 
 ordering mechanism described by [Défago, et al](https://infoscience.epfl.ch/server/api/core/bitstreams/068f8add-50ce-4216-b750-3cde412ee397/content) (2004). 
 
-<img width="893" height="903" alt="image" src="https://github.com/user-attachments/assets/12104b42-c239-44ce-bd40-a135e481fe7c" />
-
+<img width="2126" height="1146" alt="image" src="https://github.com/user-attachments/assets/953d9c36-3f9d-4a72-b29b-54ceaa3c543f" />
 
 `cquencer` adheres to a simple protocol and is payload-agnostic. It
 listens for connections over TCP on a local address and port. Each message received over that port is assigned a
