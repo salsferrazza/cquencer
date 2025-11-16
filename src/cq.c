@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        handle_connection_io(conn);
+        handle_tcp_io(conn);
 
         // send output buffer over UDP
         if (strlen(udp_output_buffer) > 0) {
@@ -312,7 +312,7 @@ static bool accept_new_connection(void) {
   return true;
 }
 
-static void handle_connection_io(Connection *conn) {
+static void handle_tcp_io(Connection *conn) {
   if (conn->state == CONN_STATE_REQ) {
 
     int bytes_read =
@@ -384,7 +384,7 @@ static void handle_connection_io(Connection *conn) {
     }
     conn->state = CONN_STATE_REQ;
   } else {
-    fputs("handle_connection_io(): invalid state\n", stderr);
+    fputs("handle_tcp_io(): invalid state\n", stderr);
     exit(EXIT_FAILURE);
   }
 }

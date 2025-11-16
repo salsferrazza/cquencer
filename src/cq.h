@@ -48,7 +48,7 @@ typedef struct {
 } Connection;
 
 static bool accept_new_connection(void);
-static void handle_connection_io(Connection *conn);
+static void handle_tcp_io(Connection *conn);
 static void send_current_sequence_num(Connection *conn);
 static void now(char* datestr);
 static int secs(void);
