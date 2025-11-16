@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
           int nbytes = sendto(
                               udp_fd,
                               udp_output_buffer,
-                              strlen(udp_output_buffer) + 1,
+                              strlen(udp_output_buffer),
                               0,
                               (sockaddr*) &multicast_addr,
                               sizeof(multicast_addr)
@@ -331,13 +331,7 @@ static void handle_connection_io(Connection *conn) {
     
     // if there is no content, just return the current sequence number
     if (bytes_read <= 1) {
-      sprintf(sequence_chars, "%lu", sequence_num);
-      seq_len = strlen(sequence_chars);
-      char prefix[seq_len + 1];
-      sprintf(prefix, "%lu", strlen(sequence_chars));
-      snprintf(conn->write_buffer, strlen(prefix) + strlen(sequence_chars) + 3,
-	       "%s:%s,", prefix, sequence_chars);
-      conn->state = CONN_STATE_RES;
+      send_current_sequence_num(conn);
       return;
     }
     
@@ -418,6 +412,12 @@ static void now(char *datestr) {
 
 static float get_mps(void) {
   return (sequence_num / (float) (secs() - started));      
+}
+
+static void send_current_sequence_num(Connection *conn) { 
+  sprintf(sequence_chars, "%lu", sequence_num);
+  sprintf(conn->write_buffer, "%lu:%s,", strlen(sequence_chars), sequence_chars);
+  conn->state = CONN_STATE_RES;
 }
 
 static void cleanup(void) {
