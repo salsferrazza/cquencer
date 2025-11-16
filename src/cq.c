@@ -56,7 +56,7 @@ char udp_output_buffer[MAX_FRAME_LENGTH + 1];
 // storage necessary for each iteration of sequencing
 int total_msg_len, payload_len, seq_len = 0;
 char payload_ns[MAX_PAYLOAD_LENGTH + 1];
-char seq_ns[25]; // 20 + strlen("20:,") + null terminator 
+char seq_ns[MAX_SEQ_NS_LEN]; // 20 + strlen("20:,") + null terminator 
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
@@ -332,7 +332,8 @@ static void handle_connection_io(Connection *conn) {
     // if there is no content, just return the current sequence number
     if (bytes_read <= 1) {
       sprintf(sequence_chars, "%lu", sequence_num);
-      sprintf(conn->write_buffer, "%lu:%s,", strlen(sequence_chars), sequence_chars);
+      snprintf(conn->write_buffer, MAX_SEQ_NS_LEN,
+	       "%lu:%s,", strlen(sequence_chars), sequence_chars);
       conn->state = CONN_STATE_RES;
       return;
     }

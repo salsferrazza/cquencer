@@ -1,6 +1,9 @@
 // the max number of TCP connections that can wait in the queue
 #define CONNECTION_BACKLOG 512
 
+// maximum size of a sequence number netstring
+#define MAX_SEQ_NS_LEN 25
+
 // the maximum size of a frame
 #define MAX_FRAME_LENGTH 1500 
 
