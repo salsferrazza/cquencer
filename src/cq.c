@@ -418,7 +418,7 @@ static void send_current_sequence_num(Connection *conn) {
   sprintf(sequence_chars, "%lu", sequence_num);
   seq_len = strlen(sequence_chars);
   sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
-  sprintf(conn->write_buffer, "%s,", seq_ns);
+  sprintf(conn->write_buffer, "%s", seq_ns);
   conn->state = CONN_STATE_RES;
 }
 
