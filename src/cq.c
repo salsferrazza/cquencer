@@ -332,8 +332,12 @@ static void handle_connection_io(Connection *conn) {
     // if there is no content, just return the current sequence number
     if (bytes_read <= 1) {
       sprintf(sequence_chars, "%lu", sequence_num);
-      snprintf(conn->write_buffer, MAX_SEQ_NS_LEN,
-	       "%lu:%s,", strlen(sequence_chars), sequence_chars);
+      seq_len = strlen(sequence_chars);
+      char prefix[seq_len + 1];
+      sprintf(prefix, "%lu", strlen(sequence_chars));
+	
+      snprintf(conn->write_buffer, strlen(prefix) + strlen(sequence_chars) + 3,
+	       "%s:%s,", prefix, sequence_chars);
       conn->state = CONN_STATE_RES;
       return;
     }
