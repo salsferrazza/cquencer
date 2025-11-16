@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
           int nbytes = sendto(
                               udp_fd,
                               udp_output_buffer,
-                              strlen(udp_output_buffer),
+                              strlen(udp_output_buffer) + 1,
                               0,
                               (sockaddr*) &multicast_addr,
                               sizeof(multicast_addr)
@@ -335,7 +335,6 @@ static void handle_connection_io(Connection *conn) {
       seq_len = strlen(sequence_chars);
       char prefix[seq_len + 1];
       sprintf(prefix, "%lu", strlen(sequence_chars));
-	
       snprintf(conn->write_buffer, strlen(prefix) + strlen(sequence_chars) + 3,
 	       "%s:%s,", prefix, sequence_chars);
       conn->state = CONN_STATE_RES;
@@ -356,7 +355,8 @@ static void handle_connection_io(Connection *conn) {
     assert(strlen(seq_ns) > 0);
     
     payload_len = strlen(conn->read_buffer);
-    snprintf(payload_ns, seq_len + 2 + payload_len, "%d:%s,", payload_len, conn->read_buffer);
+    int limit = strlen(conn->read_buffer) + payload_len + 2;
+    snprintf(payload_ns, limit, "%d:%s,", payload_len, conn->read_buffer);
 
     total_msg_len += strlen(payload_ns);
     
