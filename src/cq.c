@@ -363,7 +363,7 @@ static void handle_connection_io(Connection *conn) {
     }
 
     // populate TCP write buffer for client response
-    sprintf(conn->write_buffer, "%lu:%s,", strlen(sequence_chars), sequence_chars);
+    sprintf(conn->write_buffer, "%s", seq_ns);
 
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
