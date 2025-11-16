@@ -351,7 +351,7 @@ static void handle_connection_io(Connection *conn) {
     assert(strlen(seq_ns) > 0);
     
     payload_len = strlen(conn->read_buffer);
-    snprintf(payload_ns, payload_len, "%d:%s,", payload_len, conn->read_buffer);
+    snprintf(payload_ns, payload_len + 2 + seq_len, "%d:%s,", payload_len, conn->read_buffer);
 
     total_msg_len += strlen(payload_ns);
     
