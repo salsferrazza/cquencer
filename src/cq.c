@@ -56,7 +56,7 @@ char udp_output_buffer[MAX_FRAME_LENGTH + 1];
 // storage necessary for each iteration of sequencing
 int total_msg_len, payload_len, seq_len = 0;
 char payload_ns[MAX_PAYLOAD_LENGTH + 1];
-char seq_ns[MAX_SEQ_NS_LEN]; // 20 + strlen("20:,") + null terminator 
+char seq_ns[MAX_SEQ_NS_LEN]; // 20 + strlen("20:,") + null terminator
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
@@ -183,6 +183,7 @@ int main(int argc, char *argv[]) {
   }
 
   started = secs();
+  sprintf(seq_ns, "1:0,");
   
   // the event loop
   while (true) {
@@ -368,7 +369,6 @@ static void handle_tcp_io(Connection *conn) {
     conn->state = CONN_STATE_RES;
 
     // reset variables for next iteration
-    memset(seq_ns, 0, strlen(seq_ns));
     memset(payload_ns, 0, strlen(payload_ns));
     total_msg_len = 0;
     seq_len = 0;
@@ -415,9 +415,6 @@ static float get_mps(void) {
 }
 
 static void send_current_sequence_num(Connection *conn) { 
-  sprintf(sequence_chars, "%lu", sequence_num);
-  seq_len = strlen(sequence_chars);
-  sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
   sprintf(conn->write_buffer, "%s", seq_ns);
   conn->state = CONN_STATE_RES;
 }
