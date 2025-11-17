@@ -25,6 +25,9 @@
 #include "./vector.h"
 #include "./cq.h"
 
+// startup time in UNIX seconds
+int started = 0;
+
 // message log file pointer
 FILE *logptr;
 
@@ -48,33 +51,37 @@ unsigned long sequence_num = 0;
 char sequence_chars[21]; // 20 is maximum size of unsigned long as string
 
 // UDP output buffer
-char udp_output_buffer[BUFFER_LENGTH];
+char udp_output_buffer[MAX_FRAME_LENGTH + 1];
 
-//
+// storage necessary for each iteration of sequencing
 int total_msg_len, payload_len, seq_len = 0;
-char payload_ns[BUFFER_LENGTH];
-char seq_ns[25]; // 20 + strlen("20:,") + null terminator 
+char payload_ns[MAX_PAYLOAD_LENGTH + 1];
+char seq_ns[MAX_SEQ_NS_LEN]; // 20 + strlen("20:,") + null terminator 
 
 // a vector of Connection structs to store the active connections
 Vector *connections;
-// std::vector<Connection> connections;
 
 // a vector of pollfd structs to store the file descriptors that we want to
 // poll for events
 Vector *poll_fds = NULL;
 
 int main(int argc, char *argv[]) {
-   
+
+  if (argc < 4) {
+    usage();
+    exit(1);
+  }
+    
   atexit(cleanup);
   signal(SIGPIPE, SIG_IGN);
+  signal(SIGUSR1, handle_sigusr1);
   signal(SIGINT, handle_sigint);
-
+    
   setbuf(stdout, NULL); // unbuffer STDOUT
 
   char* listen_port = argv[1];
   char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
-
 
   if (LOGMSG != 0) {
     // derive logfile name from PID and date, create descriptor for writing
@@ -154,9 +161,6 @@ int main(int argc, char *argv[]) {
     perror("listen()");
     return EXIT_FAILURE;
   }
-
-  fprintf(stderr, "Listening on port %s...\n", listen_port);
-  fprintf(stderr, "Current sequence number is %ld\n", sequence_num);
   
   // initialize connections vector
   connections = vector_init(sizeof(Connection), 0);
@@ -164,22 +168,23 @@ int main(int argc, char *argv[]) {
   // initialize the poll_fds vector
   poll_fds = vector_init(sizeof(pollfd), 0);
 
-  /** SET UP MULTICAST FOR PUBLISHING **/
-  
+  // multicast setup for publishing  
   sockaddr_in multicast_addr;
   memset(&multicast_addr, 0, sizeof(multicast_addr));
   multicast_addr.sin_family = AF_INET;
   multicast_addr.sin_addr.s_addr = inet_addr(send_group);
   multicast_addr.sin_port = htons(send_port);
 
+  // fd for outbound UDP
   udp_fd = socket(multicast_addr.sin_family, SOCK_DGRAM, 0);
   if (udp_fd < 0) {
     perror("socket()");
     return 1;
   }
+
+  started = secs();
   
   // the event loop
-
   while (true) {
     // clear the poll_fds vector
     vector_clear(poll_fds);
@@ -225,7 +230,9 @@ int main(int argc, char *argv[]) {
     // poll for active fds
     rv = poll(vector_data(poll_fds), vector_length(poll_fds), -1);
     if (rv == -1) {
-      perror("poll()");
+      // this may happen when a signal interrupts execution,
+      // so fast-forward to the next iteration of the loop
+      continue;
     }
 
     // process active connections
@@ -241,7 +248,25 @@ int main(int argc, char *argv[]) {
           // this should never happen, but just in case
           continue;
         }
-        handle_connection_io(conn, udp_fd, multicast_addr);
+
+        handle_tcp_io(conn);
+
+        // send output buffer over UDP
+        if (strlen(udp_output_buffer) > 0) {
+          int nbytes = sendto(
+                              udp_fd,
+                              udp_output_buffer,
+                              strlen(udp_output_buffer),
+                              0,
+                              (sockaddr*) &multicast_addr,
+                              sizeof(multicast_addr)
+                              );
+          if (nbytes < 0) {
+            perror("sendto");
+          }
+          // reset values for next iteration
+          memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
+        }
       }
     }
 
@@ -252,6 +277,17 @@ int main(int argc, char *argv[]) {
   }
   return EXIT_SUCCESS;
 }
+
+static void usage(void) {
+   static const char *usage[] = {
+      "cq: a fixed sequencer for atomic broadcast",
+      "",
+      "Usage: cq <tcp port> <multicast group> <multicast port>",
+      "  Messages submitted over TCP are multicast",
+      "  to the specified group and port, using nested",
+      "  netstring framing.",
+      NULL };
+   for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]); }
 
 static bool accept_new_connection(void) {
   // accept
@@ -276,7 +312,7 @@ static bool accept_new_connection(void) {
   return true;
 }
 
-static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr) {
+static void handle_tcp_io(Connection *conn) {
   if (conn->state == CONN_STATE_REQ) {
 
     int bytes_read =
@@ -293,11 +329,9 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
     
-    // if there is no content, return the current sequence number and bail
+    // if there is no content, just return the current sequence number
     if (bytes_read <= 1) {
-      sprintf(sequence_chars, "%lu", sequence_num);
-      memcpy(conn->write_buffer, sequence_chars, strlen(sequence_chars));
-      conn->state = CONN_STATE_RES;
+      send_current_sequence_num(conn);
       return;
     }
     
@@ -315,7 +349,8 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     assert(strlen(seq_ns) > 0);
     
     payload_len = strlen(conn->read_buffer);
-    sprintf(payload_ns, "%d:%s,", payload_len, conn->read_buffer);
+    int limit = strlen(conn->read_buffer) + payload_len + 2;
+    snprintf(payload_ns, limit, "%d:%s,", payload_len, conn->read_buffer);
 
     total_msg_len += strlen(payload_ns);
     
@@ -325,29 +360,14 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
       // persist message locally    
       fprintf(logptr, "%s", udp_output_buffer);
     }
-    
-    // send output buffer over UDP
-    int nbytes = sendto(
-                        udp_fd,
-                        udp_output_buffer,
-                        strlen(udp_output_buffer),
-                        0,
-                        (sockaddr*) &multicast_addr,
-                        sizeof(multicast_addr)
-                        );
-    if (nbytes < 0) {
-      perror("sendto");
-      return;
-    }
 
     // populate TCP write buffer for client response
-    memcpy(conn->write_buffer, sequence_chars, strlen(sequence_chars));
+    sprintf(conn->write_buffer, "%s", seq_ns);
 
     // this connection is ready to send a response now
     conn->state = CONN_STATE_RES;
 
-    // reset values for next iteration
-    memset(udp_output_buffer, 0, BUFFER_LENGTH);
+    // reset variables for next iteration
     memset(seq_ns, 0, strlen(seq_ns));
     memset(payload_ns, 0, strlen(payload_ns));
     total_msg_len = 0;
@@ -364,7 +384,7 @@ static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multi
     }
     conn->state = CONN_STATE_REQ;
   } else {
-    fputs("handle_connection_io(): invalid state\n", stderr);
+    fputs("handle_tcp_io(): invalid state\n", stderr);
     exit(EXIT_FAILURE);
   }
 }
@@ -376,12 +396,30 @@ static void logfile_name(char *logname) {
   sprintf(logname, "%s-%s.msg", pidstr, curstamp);
 }
 
+static int secs(void) {
+  timespec tv;
+  if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
+  return tv.tv_sec;  
+}
+
 static void now(char *datestr) {
   timespec tv;
   if (clock_gettime(CLOCK_REALTIME, &tv)) perror("error clock_gettime\n");
   int sec = tv.tv_sec;
   int nsec = tv.tv_nsec;
   sprintf(datestr, "%d%09d", sec, nsec);
+}
+
+static float get_mps(void) {
+  return (sequence_num / (float) (secs() - started));      
+}
+
+static void send_current_sequence_num(Connection *conn) { 
+  sprintf(sequence_chars, "%lu", sequence_num);
+  seq_len = strlen(sequence_chars);
+  sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
+  sprintf(conn->write_buffer, "%s", seq_ns);
+  conn->state = CONN_STATE_RES;
 }
 
 static void cleanup(void) {
@@ -411,6 +449,10 @@ static void cleanup(void) {
   if (poll_fds != NULL) {
     vector_free(poll_fds);
   }
+}
+
+static void handle_sigusr1(int sig) {
+  fprintf(stderr, "mps: %f, seq: %lu, tcp: %lu\n", get_mps(), sequence_num, vector_length(connections));
 }
 
 static void handle_sigint(int sig) {

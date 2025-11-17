@@ -1,14 +1,29 @@
-// the size of byte prefixes
-#define PREFIX_LENGTH sizeof(int)
-
-// the max number of connections that can wait in the queue
+// the max number of TCP connections that can wait in the queue
 #define CONNECTION_BACKLOG 512
 
-// the maximum size of a message
-#define MAX_MESSAGE_LENGTH 1440
+// maximum size of a sequence number netstring
+#define MAX_SEQ_NS_LEN 25
 
-// the maximum size of a message (including prefix)
-#define BUFFER_LENGTH PREFIX_LENGTH + sizeof(long) + MAX_MESSAGE_LENGTH
+// the maximum size of a frame
+#define MAX_FRAME_LENGTH 1500 
+
+/**
+
+Components of the maximum payload size are:
+
+1) The maximum size of a sequence number netstring, which is 24, i.e.:
+
+                     20:18446744073709551615,
+
+2) The maximum size of the payload netstring formatting, which is 6:
+           
+                            1468:,
+   
+3) The maximum size of the frame netstring formatting, which is also 6   
+
+ */
+
+#define MAX_PAYLOAD_LENGTH MAX_FRAME_LENGTH - 36
 
 enum ConnectionState {
   CONN_STATE_REQ = 0,
@@ -28,16 +43,21 @@ typedef struct Vector Vector;
 typedef struct {
   int fd;
   enum ConnectionState state;
-  char read_buffer[BUFFER_LENGTH];
-  char write_buffer[BUFFER_LENGTH];
+  char read_buffer[MAX_PAYLOAD_LENGTH];
+  char write_buffer[25]; // max size of netstrung sequence number
 } Connection;
 
 static bool accept_new_connection(void);
-static void handle_connection_io(Connection *conn, int udp_fd, sockaddr_in multicast_addr);
+static void handle_tcp_io(Connection *conn);
+static void send_current_sequence_num(Connection *conn);
 static void now(char* datestr);
+static int secs(void);
 static void logfile_name(char* logname);
 static void cleanup(void);
 static void handle_sigint(int sig);
+static void handle_sigusr1(int sig);
+static void usage(void);
+static float get_mps(void);
 
 // to store the address information of the server
 addrinfo *server_info = NULL;
