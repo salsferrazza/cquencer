@@ -6,6 +6,10 @@ class SenderMixin:
 
     last_sequence_sent = 0
     msgbuf = bytearray(21)
+
+    def __del__(self):
+        if self.client_socket is not None:
+            self.client_socket.close()
     
     def connect(self, host, remote_port):
         """Connects to the cquencer TCP port for sending unsequenced messages
