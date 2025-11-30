@@ -269,9 +269,9 @@ int main(int argc, char *argv[]) {
             perror("sendto");
             // Since we're not buffering messages and retrying, crash.
             fprintf(stderr,
-                    "Could not send datagram to multicast group. Last sequence # sent was %lu",
+                    "Could not send datagram to multicast group. Last sequence # sent was %lu\n",
                     sequence_num - 1);
-            return EXIT_FAILURE;
+            exit(EXIT_FAILURE);
           }
 
           // reset values for next iteration
