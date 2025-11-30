@@ -46,6 +46,9 @@ int udp_fd = -1;
 // the sequence number
 unsigned long sequence_num = 0;
 
+// a copy of sequence number state for metrics
+unsigned long checkpoint_sequence_num = 0;
+
 // temporary storage of sequence number
 // as a string for TCP client response
 char sequence_chars[21]; // 20 is maximum size of unsigned long as string
@@ -79,8 +82,8 @@ int main(int argc, char *argv[]) {
     
   setbuf(stdout, NULL); // unbuffer STDOUT
 
-  char* listen_port = argv[1];
-  char* send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
+  char *listen_port = argv[1];
+  char *send_group = argv[2]; // e.g. 239.255.255.250 for SSDP
   int send_port = atoi(argv[3]); // 0 if error, which is an invalid port
 
   if (LOGMSG != 0) {
@@ -264,7 +267,13 @@ int main(int argc, char *argv[]) {
                               );
           if (nbytes < 0) {
             perror("sendto");
+	    // Since we're not buffering messages and retrying, crash.
+	    fprintf(stderr,
+		    "Could not send datagram to multicast group. Last sequence # sent was %lu",
+		    sequence_num - 1);
+	    return EXIT_FAILURE;
           }
+
           // reset values for next iteration
           memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
         }
@@ -387,6 +396,12 @@ static void handle_tcp_io(Connection *conn) {
     fputs("handle_tcp_io(): invalid state\n", stderr);
     exit(EXIT_FAILURE);
   }
+
+  int current_secs = secs();
+  if (current_secs - started >= 60) {
+    checkpoint_sequence_num = sequence_num;
+    started = current_secs;
+  }
 }
 
 static void logfile_name(char *logname) {
@@ -411,7 +426,7 @@ static void now(char *datestr) {
 }
 
 static float get_mps(void) {
-  return (sequence_num / (float) (secs() - started));      
+  return ((sequence_num - checkpoint_sequence_num) / (float) (secs() - started));      
 }
 
 static void send_current_sequence_num(Connection *conn) { 
