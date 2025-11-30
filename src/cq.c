@@ -267,11 +267,11 @@ int main(int argc, char *argv[]) {
                               );
           if (nbytes < 0) {
             perror("sendto");
-	    // Since we're not buffering messages and retrying, crash.
-	    fprintf(stderr,
-		    "Could not send datagram to multicast group. Last sequence # sent was %lu",
-		    sequence_num - 1);
-	    return EXIT_FAILURE;
+            // Since we're not buffering messages and retrying, crash.
+            fprintf(stderr,
+                    "Could not send datagram to multicast group. Last sequence # sent was %lu",
+                    sequence_num - 1);
+            return EXIT_FAILURE;
           }
 
           // reset values for next iteration
