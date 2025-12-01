@@ -28,6 +28,9 @@
 // startup time in UNIX seconds
 int started = 0;
 
+// checkpoint UNIX seconds for metrics
+int checkpoint_epoch = 0;
+
 // message log file pointer
 FILE *logptr;
 
@@ -186,10 +189,12 @@ int main(int argc, char *argv[]) {
   }
 
   started = secs();
+  checkpoint_epoch = started;
   sprintf(seq_ns, "1:0,");
   
   // the event loop
   while (true) {
+    
     // clear the poll_fds vector
     vector_clear(poll_fds);
 
@@ -255,14 +260,13 @@ int main(int argc, char *argv[]) {
 
         handle_tcp_io(conn);
 
-        // send output buffer over UDP
         if (strlen(udp_output_buffer) > 0) {
           int nbytes = sendto(
                               udp_fd,
                               udp_output_buffer,
                               strlen(udp_output_buffer),
                               0,
-                              (sockaddr*) &multicast_addr,
+                              (sockaddr *) &multicast_addr,
                               sizeof(multicast_addr)
                               );
           if (nbytes < 0) {
@@ -279,7 +283,6 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-
     // try to accept a new connection if the listening fd is active
     if (((pollfd *)vector_get(poll_fds, 0))->revents & POLLIN) {
       accept_new_connection();
@@ -289,15 +292,16 @@ int main(int argc, char *argv[]) {
 }
 
 static void usage(void) {
-   static const char *usage[] = {
-      "cq: a fixed sequencer for atomic broadcast",
-      "",
-      "Usage: cq <tcp port> <multicast group> <multicast port>",
-      "  Messages submitted over TCP are multicast",
-      "  to the specified group and port, using nested",
-      "  netstring framing.",
-      NULL };
-   for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]); }
+  static const char *usage[] = {
+    "cq: a fixed sequencer for atomic broadcast",
+    "",
+    "Usage: cq <tcp port> <multicast group> <multicast port>",
+    "  Messages submitted over TCP are multicast",
+    "  to the specified group and port, using nested",
+    "  netstring framing.",
+    NULL };
+  for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]);
+}
 
 static bool accept_new_connection(void) {
   // accept
@@ -398,9 +402,9 @@ static void handle_tcp_io(Connection *conn) {
   }
 
   int current_secs = secs();
-  if (current_secs - started >= 60) {
+  if (current_secs - checkpoint_epoch >= 60) {
     checkpoint_sequence_num = sequence_num;
-    started = current_secs;
+    checkpoint_epoch = current_secs;
   }
 }
 
@@ -426,7 +430,7 @@ static void now(char *datestr) {
 }
 
 static float get_mps(void) {
-  return ((sequence_num - checkpoint_sequence_num) / (float) (secs() - started));      
+  return ((sequence_num - checkpoint_sequence_num) / (float) (secs() - checkpoint_epoch));      
 }
 
 static void send_current_sequence_num(Connection *conn) { 
