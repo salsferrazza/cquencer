@@ -11,8 +11,7 @@ The warehouse is written to check itsw own inventory levels before accepting an 
 
 # Diagram of inventory example message flow
 
-<img width="1212" height="952" alt="image" src="https://github.com/user-attachments/assets/616cdc98-08f0-4c99-9d86-6806d5a4f687" />
-
+<img width="2398" height="1844" alt="image" src="https://github.com/user-attachments/assets/46ed17b7-411f-45af-955a-6df92b96efbc" />
 
 # Characteristics of sequencer architectures 
 
@@ -63,6 +62,7 @@ The sequenced stream abstraction typically does not need to leak into the applic
 ## One process, one thread
 
 Sequencer architectures are a solution to coordinate _inherently sequential_ workloads. These are the polar opposite of map/reduce style embarrassingly parallel workloads. Applications designed with sequencer architectures coordinate events coming from distributed network peers that all require a consistent view of single state machine, yet mutable by sequenced stream publishers.
+
 
 
 
