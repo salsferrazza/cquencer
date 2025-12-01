@@ -57,7 +57,7 @@ static void cleanup(void);
 static void handle_sigint(int sig);
 static void handle_sigusr1(int sig);
 static void usage(void);
-static float get_mps(void);
+static double get_mps(void);
 
 // to store the address information of the server
 addrinfo *server_info = NULL;

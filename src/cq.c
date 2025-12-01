@@ -429,8 +429,8 @@ static void now(char *datestr) {
   sprintf(datestr, "%d%09d", sec, nsec);
 }
 
-static float get_mps(void) {
-  return ((sequence_num - checkpoint_sequence_num) / (float) (secs() - checkpoint_epoch));      
+static double get_mps(void) {
+  return ((sequence_num - checkpoint_sequence_num) / (double) (secs() - checkpoint_epoch));      
 }
 
 static void send_current_sequence_num(Connection *conn) { 
@@ -468,7 +468,7 @@ static void cleanup(void) {
 }
 
 static void handle_sigusr1(int sig) {
-  fprintf(stderr, "mps: %f, seq: %lu, tcp: %lu\n", get_mps(), sequence_num, vector_length(connections));
+  fprintf(stderr, "1m mps: %.2f, last seq: %lu, tcp conn: %lu\n", get_mps(), sequence_num, vector_length(connections));
 }
 
 static void handle_sigint(int sig) {
