@@ -9,6 +9,10 @@ The key feature that a sequencer architecture enables is a consistent view of th
 The warehouse broadcasts mutations to each SKU's inventory level (increment or decrement) to the network, so that points-of-sale can avoid booking against phantom inventory. Point-of-sale systems send orders to the network and upon receiving the order, the warehouse decrements it's inventory count and broadcasts the new value to all systems. Points-of-sale are written to check existing inventory before sending an order to the network. 
 The warehouse is written to check itsw own inventory levels before accepting an order and sequencing the inventory decrement to the network.
 
+# Diagram of inventory example message flow
+
+<img width="2398" height="1844" alt="image" src="https://github.com/user-attachments/assets/46ed17b7-411f-45af-955a-6df92b96efbc" />
+
 # Characteristics of sequencer architectures 
 
 While cquencer provides a fixed sequencer module, this by itself is a necessary but insufficient component of the classic sequencer architecture. Other important characteristics found in these systems include:
@@ -58,6 +62,8 @@ The sequenced stream abstraction typically does not need to leak into the applic
 ## One process, one thread
 
 Sequencer architectures are a solution to coordinate _inherently sequential_ workloads. These are the polar opposite of map/reduce style embarrassingly parallel workloads. Applications designed with sequencer architectures coordinate events coming from distributed network peers that all require a consistent view of single state machine, yet mutable by sequenced stream publishers.
+
+
 
 
 
