@@ -46,6 +46,9 @@ int tcp_fd = -1;
 // the udp file descriptor
 int udp_fd = -1;
 
+// multicast address for send()
+sockaddr_in multicast_addr;
+
 // the sequence number
 unsigned long sequence_num = 0;
 
@@ -175,7 +178,6 @@ int main(int argc, char *argv[]) {
   poll_fds = vector_init(sizeof(pollfd), 0);
 
   // multicast setup for publishing  
-  sockaddr_in multicast_addr;
   memset(&multicast_addr, 0, sizeof(multicast_addr));
   multicast_addr.sin_family = AF_INET;
   multicast_addr.sin_addr.s_addr = inet_addr(send_group);
@@ -259,28 +261,8 @@ int main(int argc, char *argv[]) {
         }
 
         handle_tcp_io(conn);
+        handle_udp_io();
 
-        if (strlen(udp_output_buffer) > 0) {
-          int nbytes = sendto(
-                              udp_fd,
-                              udp_output_buffer,
-                              strlen(udp_output_buffer),
-                              0,
-                              (sockaddr *) &multicast_addr,
-                              sizeof(multicast_addr)
-                              );
-          if (nbytes < 0) {
-            perror("sendto");
-            // Since we're not buffering messages and retrying, crash.
-            fprintf(stderr,
-                    "Could not send datagram to multicast group. Last sequence # sent was %lu\n",
-                    sequence_num - 1);
-            exit(EXIT_FAILURE);
-          }
-
-          // reset values for next iteration
-          memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
-        }
       }
     }
     // try to accept a new connection if the listening fd is active
@@ -324,6 +306,30 @@ static bool accept_new_connection(void) {
   vector_push(connections, &conn);
 
   return true;
+}
+
+static void handle_udp_io(void) {
+  if (strlen(udp_output_buffer) > 0) {
+    int nbytes = sendto(
+                        udp_fd,
+                        udp_output_buffer,
+                        strlen(udp_output_buffer),
+                        0,
+                        (sockaddr *) &multicast_addr,
+                        sizeof(multicast_addr)
+                        );
+    if (nbytes < 0) {
+      perror("sendto");
+      // Since we're not buffering messages and retrying, crash.
+      fprintf(stderr,
+              "Could not send datagram to multicast group. Last sequence # sent was %lu\n",
+              sequence_num - 1);
+      exit(EXIT_FAILURE);
+    }
+
+    // reset values for next iteration
+    memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
+  }
 }
 
 static void handle_tcp_io(Connection *conn) {
