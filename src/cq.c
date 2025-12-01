@@ -28,6 +28,9 @@
 // startup time in UNIX seconds
 int started = 0;
 
+// checkpoint UNIX seconds for metrics
+int checkpoint_epoch = 0;
+
 // message log file pointer
 FILE *logptr;
 
@@ -42,6 +45,9 @@ int tcp_fd = -1;
 
 // the udp file descriptor
 int udp_fd = -1;
+
+// multicast address for send()
+sockaddr_in multicast_addr;
 
 // the sequence number
 unsigned long sequence_num = 0;
@@ -172,7 +178,6 @@ int main(int argc, char *argv[]) {
   poll_fds = vector_init(sizeof(pollfd), 0);
 
   // multicast setup for publishing  
-  sockaddr_in multicast_addr;
   memset(&multicast_addr, 0, sizeof(multicast_addr));
   multicast_addr.sin_family = AF_INET;
   multicast_addr.sin_addr.s_addr = inet_addr(send_group);
@@ -186,10 +191,12 @@ int main(int argc, char *argv[]) {
   }
 
   started = secs();
+  checkpoint_epoch = started;
   sprintf(seq_ns, "1:0,");
   
   // the event loop
   while (true) {
+    
     // clear the poll_fds vector
     vector_clear(poll_fds);
 
@@ -254,32 +261,10 @@ int main(int argc, char *argv[]) {
         }
 
         handle_tcp_io(conn);
+        handle_udp_io();
 
-        // send output buffer over UDP
-        if (strlen(udp_output_buffer) > 0) {
-          int nbytes = sendto(
-                              udp_fd,
-                              udp_output_buffer,
-                              strlen(udp_output_buffer),
-                              0,
-                              (sockaddr*) &multicast_addr,
-                              sizeof(multicast_addr)
-                              );
-          if (nbytes < 0) {
-            perror("sendto");
-            // Since we're not buffering messages and retrying, crash.
-            fprintf(stderr,
-                    "Could not send datagram to multicast group. Last sequence # sent was %lu\n",
-                    sequence_num - 1);
-            exit(EXIT_FAILURE);
-          }
-
-          // reset values for next iteration
-          memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
-        }
       }
     }
-
     // try to accept a new connection if the listening fd is active
     if (((pollfd *)vector_get(poll_fds, 0))->revents & POLLIN) {
       accept_new_connection();
@@ -289,15 +274,16 @@ int main(int argc, char *argv[]) {
 }
 
 static void usage(void) {
-   static const char *usage[] = {
-      "cq: a fixed sequencer for atomic broadcast",
-      "",
-      "Usage: cq <tcp port> <multicast group> <multicast port>",
-      "  Messages submitted over TCP are multicast",
-      "  to the specified group and port, using nested",
-      "  netstring framing.",
-      NULL };
-   for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]); }
+  static const char *usage[] = {
+    "cq: a fixed sequencer for atomic broadcast",
+    "",
+    "Usage: cq <tcp port> <multicast group> <multicast port>",
+    "  Messages submitted over TCP are multicast",
+    "  to the specified group and port, using nested",
+    "  netstring framing.",
+    NULL };
+  for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]);
+}
 
 static bool accept_new_connection(void) {
   // accept
@@ -320,6 +306,30 @@ static bool accept_new_connection(void) {
   vector_push(connections, &conn);
 
   return true;
+}
+
+static void handle_udp_io(void) {
+  if (strlen(udp_output_buffer) > 0) {
+    int nbytes = sendto(
+                        udp_fd,
+                        udp_output_buffer,
+                        strlen(udp_output_buffer),
+                        0,
+                        (sockaddr *) &multicast_addr,
+                        sizeof(multicast_addr)
+                        );
+    if (nbytes < 0) {
+      perror("sendto");
+      // Since we're not buffering messages and retrying, crash.
+      fprintf(stderr,
+              "Could not send datagram to multicast group. Last sequence # sent was %lu\n",
+              sequence_num - 1);
+      exit(EXIT_FAILURE);
+    }
+
+    // reset values for next iteration
+    memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
+  }
 }
 
 static void handle_tcp_io(Connection *conn) {
@@ -398,9 +408,9 @@ static void handle_tcp_io(Connection *conn) {
   }
 
   int current_secs = secs();
-  if (current_secs - started >= 60) {
+  if (current_secs - checkpoint_epoch >= 60) {
     checkpoint_sequence_num = sequence_num;
-    started = current_secs;
+    checkpoint_epoch = current_secs;
   }
 }
 
@@ -425,8 +435,8 @@ static void now(char *datestr) {
   sprintf(datestr, "%d%09d", sec, nsec);
 }
 
-static float get_mps(void) {
-  return ((sequence_num - checkpoint_sequence_num) / (float) (secs() - started));      
+static double get_mps(void) {
+  return ((sequence_num - checkpoint_sequence_num) / (double) (secs() - checkpoint_epoch));      
 }
 
 static void send_current_sequence_num(Connection *conn) { 
@@ -464,7 +474,7 @@ static void cleanup(void) {
 }
 
 static void handle_sigusr1(int sig) {
-  fprintf(stderr, "mps: %f, seq: %lu, tcp: %lu\n", get_mps(), sequence_num, vector_length(connections));
+  fprintf(stderr, "1m mps: %.2f, last seq: %lu, tcp conn: %lu\n", get_mps(), sequence_num, vector_length(connections));
 }
 
 static void handle_sigint(int sig) {

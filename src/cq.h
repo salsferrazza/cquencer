@@ -49,6 +49,7 @@ typedef struct {
 
 static bool accept_new_connection(void);
 static void handle_tcp_io(Connection *conn);
+static void handle_udp_io(void);
 static void send_current_sequence_num(Connection *conn);
 static void now(char* datestr);
 static int secs(void);
@@ -57,7 +58,7 @@ static void cleanup(void);
 static void handle_sigint(int sig);
 static void handle_sigusr1(int sig);
 static void usage(void);
-static float get_mps(void);
+static double get_mps(void);
 
 // to store the address information of the server
 addrinfo *server_info = NULL;
