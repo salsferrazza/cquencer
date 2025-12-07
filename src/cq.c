@@ -49,6 +49,9 @@ int tcp_fd = -1;
 // the udp file descriptor
 int udp_fd = -1;
 
+// multicast address for send()
+sockaddr_in multicast_addr;
+
 // the sequence number
 unsigned long sequence_num = 0;
 
@@ -196,6 +199,7 @@ int main(int argc, char *argv[]) {
   
   // the event loop
   while (true) {
+    
     // clear the poll_fds vector
     vector_clear(poll_fds);
 
@@ -261,7 +265,7 @@ int main(int argc, char *argv[]) {
 
         // puts sequenced message into udp_output_buffer
         handle_tcp_io(conn);
-
+        
         // persist message locally if enabled
         if (LOGMSG) {
           fprintf(logptr, "%s", udp_output_buffer);
@@ -282,7 +286,6 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-
     // try to accept a new connection if the listening fd is active
     if (((pollfd *)vector_get(poll_fds, 0))->revents & POLLIN) {
       accept_new_connection();
@@ -292,15 +295,16 @@ int main(int argc, char *argv[]) {
 }
 
 static void usage(void) {
-   static const char *usage[] = {
-      "cq: a fixed sequencer for atomic broadcast",
-      "",
-      "Usage: cq <tcp port> <multicast group> <multicast port>",
-      "  Messages submitted over TCP are multicast",
-      "  to the specified group and port, using nested",
-      "  netstring framing.",
-      NULL };
-   for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]); }
+  static const char *usage[] = {
+    "cq: a fixed sequencer for atomic broadcast",
+    "",
+    "Usage: cq <tcp port> <multicast group> <multicast port>",
+    "  Messages submitted over TCP are multicast",
+    "  to the specified group and port, using nested",
+    "  netstring framing.",
+    NULL };
+  for (int i = 0; usage[i]; ++i) fprintf(stderr, "%s\n", usage[i]);
+}
 
 static bool accept_new_connection(void) {
   // accept
