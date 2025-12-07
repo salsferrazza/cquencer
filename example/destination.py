@@ -30,7 +30,7 @@ class Destination:
             # feed both netstrings back into the conneciton
             self.conn.receive_data(self.conn.next_event())
 
-            # pull the first child, which is the sequence number            
+            # pull the first child, which is the sequence number           
             seq = self.conn.next_event().decode('utf-8')
 
             # pull the second child, which is the submitted data
