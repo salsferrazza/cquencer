@@ -4,7 +4,7 @@ from inventory import InventoryDestination
 from pos import PointOfSale
 from concurrent.futures import ThreadPoolExecutor
 
-NUM_POS = 20
+NUM_POS = 50
 WORKERS = NUM_POS * 2
 
 def main():
