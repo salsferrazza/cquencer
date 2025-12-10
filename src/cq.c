@@ -311,16 +311,22 @@ static bool accept_new_connection(void) {
   sockaddr_storage client_addr = {};
   socklen_t addr_size = sizeof client_addr;
 
-  int conn_fd = accept(tcp_fd, (sockaddr *)&client_addr, &addr_size);
+  int conn_fd = accept(tcp_fd, (sockaddr *) &client_addr, &addr_size);
   if (conn_fd == -1) {
     perror("accept()");
     return false;
   }
 
+  char addr[addr_size];
+  sprintf(addr, "%s", inet_ntoa(((struct sockaddr_in *) &client_addr)->sin_addr));
+  int port = ntohs(((struct sockaddr_in *) &client_addr)->sin_port);
+    
   // creating the struct Conn
   Connection conn = {
     .fd = conn_fd,
     .state = CONN_STATE_REQ,
+    .client_addr = addr,
+    .client_port = port
   };
 
   // add the connection to the connections vector
@@ -352,7 +358,6 @@ static void handle_udp_io(void) {
 
 static void handle_tcp_io(Connection *conn) {
   if (conn->state == CONN_STATE_REQ) {
-
     int bytes_read =
       recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
     if (bytes_read == -1) {
