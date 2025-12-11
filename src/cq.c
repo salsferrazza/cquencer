@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
   atexit(cleanup);
   signal(SIGPIPE, SIG_IGN);
   signal(SIGUSR1, handle_sigusr1);
+  signal(SIGUSR2, handle_sigusr2);
   signal(SIGINT, handle_sigint);
     
   setbuf(stdout, NULL); // unbuffer STDOUT
@@ -311,16 +312,23 @@ static bool accept_new_connection(void) {
   sockaddr_storage client_addr = {};
   socklen_t addr_size = sizeof client_addr;
 
-  int conn_fd = accept(tcp_fd, (sockaddr *)&client_addr, &addr_size);
+  int conn_fd = accept(tcp_fd, (sockaddr *) &client_addr, &addr_size);
   if (conn_fd == -1) {
     perror("accept()");
     return false;
   }
 
+  // get the client IP and port into a usable format
+  char addr[addr_size];
+  sprintf(addr, "%s", inet_ntoa(((struct sockaddr_in *) &client_addr)->sin_addr));
+  int port = ntohs(((struct sockaddr_in *) &client_addr)->sin_port);
+    
   // creating the struct Conn
   Connection conn = {
     .fd = conn_fd,
     .state = CONN_STATE_REQ,
+    .client_addr = addr,
+    .client_port = port
   };
 
   // add the connection to the connections vector
@@ -352,7 +360,6 @@ static void handle_udp_io(void) {
 
 static void handle_tcp_io(Connection *conn) {
   if (conn->state == CONN_STATE_REQ) {
-
     int bytes_read =
       recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
     if (bytes_read == -1) {
@@ -477,6 +484,14 @@ static void cleanup(void) {
   // free the poll_fds vector
   if (poll_fds != NULL) {
     vector_free(poll_fds);
+  }
+}
+
+static void handle_sigusr2(int sig) {
+  for (int i = 0; i < vector_length(connections); i++) {
+    fprintf(stderr, "%s:%d\n",
+            ((Connection*) vector_get(connections, i))->client_addr,
+            ((Connection*) vector_get(connections, i))->client_port);
   }
 }
 

@@ -43,6 +43,8 @@ typedef struct Vector Vector;
 typedef struct {
   int fd;
   enum ConnectionState state;
+  char *client_addr;
+  int client_port;
   char read_buffer[MAX_PAYLOAD_LENGTH];
   char write_buffer[25]; // max size of netstrung sequence number
 } Connection;
@@ -57,6 +59,7 @@ static void logfile_name(char* logname);
 static void cleanup(void);
 static void handle_sigint(int sig);
 static void handle_sigusr1(int sig);
+static void handle_sigusr2(int sig);
 static void usage(void);
 static double get_mps(void);
 
