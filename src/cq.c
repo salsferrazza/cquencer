@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
   atexit(cleanup);
   signal(SIGPIPE, SIG_IGN);
   signal(SIGUSR1, handle_sigusr1);
+  signal(SIGUSR2, handle_sigusr2);
   signal(SIGINT, handle_sigint);
     
   setbuf(stdout, NULL); // unbuffer STDOUT
@@ -317,6 +318,7 @@ static bool accept_new_connection(void) {
     return false;
   }
 
+  // get the client IP and port into a usable format
   char addr[addr_size];
   sprintf(addr, "%s", inet_ntoa(((struct sockaddr_in *) &client_addr)->sin_addr));
   int port = ntohs(((struct sockaddr_in *) &client_addr)->sin_port);
@@ -482,6 +484,14 @@ static void cleanup(void) {
   // free the poll_fds vector
   if (poll_fds != NULL) {
     vector_free(poll_fds);
+  }
+}
+
+static void handle_sigusr2(int sig) {
+  for (int i = 0; i < vector_length(connections); i++) {
+    fprintf(stderr, "%s:%d\n",
+            ((Connection*) vector_get(connections, i))->client_addr,
+            ((Connection*) vector_get(connections, i))->client_port);
   }
 }
 
