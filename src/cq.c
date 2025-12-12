@@ -369,17 +369,16 @@ static void handle_tcp_io(Connection *conn) {
     } else if (bytes_read == 0) {
       conn->state = CONN_STATE_END;
       return;
+    } else if (bytes_read <= 1) {
+      // if there is no content, just return
+      // the current sequence number
+      send_current_sequence_num(conn);
+      return;
     }
 
     // terminate read buffer
     conn->read_buffer[bytes_read] = '\0';
-    
-    // if there is no content, just return the current sequence number
-    if (bytes_read <= 1) {
-      send_current_sequence_num(conn);
-      return;
-    }
-    
+        
     // save string representation of the sequence # 
     sprintf(sequence_chars, "%lu", ++sequence_num);
     
