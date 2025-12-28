@@ -44,6 +44,7 @@ typedef struct {
   int fd;
   enum ConnectionState state;
   char *client_addr;
+  int connected_at;
   int client_port;
   char read_buffer[MAX_PAYLOAD_LENGTH];
   char write_buffer[25]; // max size of netstrung sequence number

@@ -328,7 +328,8 @@ static bool accept_new_connection(void) {
     .fd = conn_fd,
     .state = CONN_STATE_REQ,
     .client_addr = addr,
-    .client_port = port
+    .client_port = port,
+    .connected_at = secs()
   };
 
   // add the connection to the connections vector
@@ -338,6 +339,8 @@ static bool accept_new_connection(void) {
 }
 
 static void handle_udp_io(void) {
+  // I/O in the function name is a misnomer,
+  // multicast just gives you O
   if (strlen(udp_output_buffer) > 0) {
     int nbytes = sendto(
                         udp_fd,
@@ -488,9 +491,10 @@ static void cleanup(void) {
 
 static void handle_sigusr2(int sig) {
   for (int i = 0; i < vector_length(connections); i++) {
-    fprintf(stderr, "%s:%d\n",
+    fprintf(stderr, "%s:%d %d\n",
             ((Connection*) vector_get(connections, i))->client_addr,
-            ((Connection*) vector_get(connections, i))->client_port);
+            ((Connection*) vector_get(connections, i))->client_port,
+            ((Connection*) vector_get(connections, i))->connected_at);
   }
 }
 
