@@ -37,7 +37,7 @@ FILE *logptr;
 // multicast address for send()
 sockaddr_in multicast_addr;
 
-// strimg presentation of current PID
+// string presentation of current PID
 char pidstr[11];
 
 // string timestamp of latest sequenced message
@@ -126,18 +126,14 @@ int main(int argc, char *argv[]) {
   // loop through all the results and bind to the first we can
   addrinfo *p = NULL;
   for (p = server_info; p != NULL; p = p->ai_next) {
-    // create a socket, which apparently is no good by itself because it's not
-    // bound to an address and port number
+    // bind socket to an address and port number
     tcp_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
     if (tcp_fd == -1) {
       perror("socket()");
       continue;
     }
 
-    // lose the "Address already in use" error message. why this happens
-    // in the first place? well even after the server is closed, the port
-    // will still be hanging around for a while, and if you try to restart
-    // the server, you'll get an "Address already in use" error message
+    // Permit socket re-use upon multiple consecutive restarts
     int yes = 1;
     rv = setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
     if (rv == -1) {
@@ -396,7 +392,7 @@ static void handle_tcp_io(Connection *conn) {
     assert(strlen(seq_ns) > 0);
     
     payload_len = strlen(conn->read_buffer);
-    int limit = strlen(conn->read_buffer) + payload_len + 2;
+    int limit = strlen(conn->read_buffer) + payload_len + strlen(":,");
     snprintf(payload_ns, limit, "%d:%s,", payload_len, conn->read_buffer);
 
     total_msg_len += strlen(payload_ns);

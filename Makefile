@@ -5,6 +5,11 @@ bin=bin
 
 all: setup clean $(bin)/cq $(bin)/destn $(bin)/sendr
 
+install:
+	@mkdir -p /opt/cq/bin
+	@cp $(bin)/cq $(bin)/destn $(bin)/sendr /opt/cq/bin
+	@echo cq binaries installed to /opt/cq/bin
+
 setup:
 	mkdir -p $(bin)
 
