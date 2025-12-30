@@ -61,7 +61,8 @@ The sequenced stream abstraction typically does not need to leak into the applic
 
 ## One process, one thread
 
-Sequencer architectures are a solution to coordinate _inherently sequential_ workloads. These are the polar opposite of map/reduce style embarrassingly parallel workloads. Applications designed with sequencer architectures coordinate events coming from distributed network peers that all require a consistent view of single state machine, yet mutable by sequenced stream publishers.
+Sequencer architectures are a solution to coordinate _inherently sequential_ workloads. These are the polar opposite of map/reduce style embarrassingly parallel workloads. Applications designed with sequencer architectures coordinate events coming from distributed network peers that all require a consistent view of single state machine.
+
 
 
 
