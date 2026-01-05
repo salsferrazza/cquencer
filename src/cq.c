@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
   }
     
   atexit(cleanup);
-  if (register_signals() != 0) { exit(EXIT_FAILURE); }
+  register_signals();
    
   setbuf(stdout, NULL); // unbuffer STDOUT
 
@@ -451,13 +451,34 @@ static void send_current_sequence_num(Connection *conn) {
   conn->state = CONN_STATE_RES;
 }
 
-static int register_signals(void) {
-  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) { perror("signal error"); return 1; }
-  if (signal(SIGHUP, handle_sighup)  == SIG_ERR) { perror("signal error"); return 1; }
-  if (signal(SIGUSR1, handle_sigusr1) == SIG_ERR) { perror("signal error"); return 1; }
-  if (signal(SIGUSR2, handle_sigusr2) == SIG_ERR) { perror("signal error"); return 1; }
-  if (signal(SIGINT, handle_sigint) == SIG_ERR) { perror("signal error"); return 1; } 
-  return 0;
+static void handle_signals(const int sig) {
+  switch(sig) {
+  case SIGUSR1:
+    handle_sigusr1(sig);
+    break;
+  case SIGUSR2:
+    handle_sigusr2(sig);
+    break;
+  case SIGINT:
+    handle_sigint(sig);
+    break;
+  case SIGHUP:
+    handle_sighup(sig);
+    break;
+  default:
+    return;
+  }
+}
+
+static void register_signals(void) {
+  struct sigaction sigact;
+  sigact.sa_handler = handle_signals;
+  sigemptyset(&sigact.sa_mask);
+  sigact.sa_flags = 0;
+  sigaction(SIGHUP, &sigact, NULL);
+  sigaction(SIGUSR1, &sigact, NULL);
+  sigaction(SIGUSR2, &sigact, NULL);
+  sigaction(SIGHUP, &sigact, NULL);
 }
 
 static void cleanup(void) {

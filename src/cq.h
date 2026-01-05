@@ -5,7 +5,10 @@
 #define MAX_SEQ_NS_LEN 25
 
 // the maximum size of a frame
-#define MAX_FRAME_LENGTH 1500 
+#define MAX_FRAME_LENGTH 1500
+
+// reset sequence number on SIGHUP?
+#define RESET_SEQ_ON_SIGHUP 0
 
 /**
 
@@ -58,7 +61,8 @@ static void now(char* datestr);
 static int secs(void);
 static void logfile_name(char* logname);
 static void cleanup(void);
-static int register_signals(void);
+static void register_signals(void);
+static void handle_signals(const int sig);
 static void handle_sigint(int sig);
 static void handle_sigusr1(int sig);
 static void handle_sigusr2(int sig);
