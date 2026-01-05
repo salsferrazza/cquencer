@@ -85,11 +85,8 @@ int main(int argc, char *argv[]) {
   }
     
   atexit(cleanup);
-  signal(SIGPIPE, SIG_IGN);
-  signal(SIGUSR1, handle_sigusr1);
-  signal(SIGUSR2, handle_sigusr2);
-  signal(SIGINT, handle_sigint);
-    
+  register_signals();
+   
   setbuf(stdout, NULL); // unbuffer STDOUT
 
   char *listen_port = argv[1];
@@ -362,7 +359,6 @@ static void handle_tcp_io(Connection *conn) {
     int bytes_read =
       recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
     if (bytes_read == -1) {
-      perror("recv()");
       conn->state = CONN_STATE_END;
       return;
     } else if (bytes_read == 0) {
@@ -415,7 +411,6 @@ static void handle_tcp_io(Connection *conn) {
     int bytes_sent =
       send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
     if (bytes_sent == -1) {
-      perror("handle_client_message(): send()");
       conn->state = CONN_STATE_END;
       return;
     }
@@ -456,6 +451,38 @@ static void send_current_sequence_num(Connection *conn) {
   conn->state = CONN_STATE_RES;
 }
 
+static void handle_signals(const int sig) {
+  switch(sig) {
+  case SIGUSR1:
+    handle_sigusr1(sig);
+    break;
+  case SIGUSR2:
+    handle_sigusr2(sig);
+    break;
+  case SIGINT:
+    handle_sigint(sig);
+    break;
+  case SIGHUP:
+    if (RESET_SEQ_ON_SIGHUP) {
+      handle_sighup(sig);
+    }
+    break;
+  default:
+    return;
+  }
+}
+
+static void register_signals(void) {
+  struct sigaction sigact;
+  sigact.sa_handler = handle_signals;
+  sigemptyset(&sigact.sa_mask);
+  sigact.sa_flags = 0;
+  sigaction(SIGHUP, &sigact, NULL);
+  sigaction(SIGUSR1, &sigact, NULL);
+  sigaction(SIGUSR2, &sigact, NULL);
+  sigaction(SIGHUP, &sigact, NULL);
+}
+
 static void cleanup(void) {
   // close the socket file descriptor
   if (tcp_fd != -1) {
@@ -492,6 +519,14 @@ static void handle_sigusr2(int sig) {
             ((Connection*) vector_get(connections, i))->client_port,
             ((Connection*) vector_get(connections, i))->connected_at);
   }
+}
+
+static void handle_sighup(int sig) {
+  // Reset sequence number without restarting the proces. Don't do it.
+  fprintf(stderr, "!!! sequence number reset request from %lu to 0 !!!", sequence_num);  
+  sequence_num = 0;
+  sprintf(sequence_chars, "%lu", sequence_num);
+  sprintf(seq_ns, "1:0,");
 }
 
 static void handle_sigusr1(int sig) {
