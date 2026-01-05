@@ -85,11 +85,8 @@ int main(int argc, char *argv[]) {
   }
     
   atexit(cleanup);
-  signal(SIGPIPE, SIG_IGN);
-  signal(SIGUSR1, handle_sigusr1);
-  signal(SIGUSR2, handle_sigusr2);
-  signal(SIGINT, handle_sigint);
-    
+  if (register_signals() != 0) { exit(EXIT_FAILURE); }
+   
   setbuf(stdout, NULL); // unbuffer STDOUT
 
   char *listen_port = argv[1];
@@ -362,7 +359,6 @@ static void handle_tcp_io(Connection *conn) {
     int bytes_read =
       recv(conn->fd, conn->read_buffer, sizeof(conn->read_buffer), 0);
     if (bytes_read == -1) {
-      perror("recv()");
       conn->state = CONN_STATE_END;
       return;
     } else if (bytes_read == 0) {
@@ -415,7 +411,6 @@ static void handle_tcp_io(Connection *conn) {
     int bytes_sent =
       send(conn->fd, conn->write_buffer, strlen(conn->write_buffer), 0);
     if (bytes_sent == -1) {
-      perror("handle_client_message(): send()");
       conn->state = CONN_STATE_END;
       return;
     }
@@ -456,6 +451,15 @@ static void send_current_sequence_num(Connection *conn) {
   conn->state = CONN_STATE_RES;
 }
 
+static int register_signals(void) {
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) { perror("signal error"); return 1; }
+  if (signal(SIGHUP, handle_sighup)  == SIG_ERR) { perror("signal error"); return 1; }
+  if (signal(SIGUSR1, handle_sigusr1) == SIG_ERR) { perror("signal error"); return 1; }
+  if (signal(SIGUSR2, handle_sigusr2) == SIG_ERR) { perror("signal error"); return 1; }
+  if (signal(SIGINT, handle_sigint) == SIG_ERR) { perror("signal error"); return 1; } 
+  return 0;
+}
+
 static void cleanup(void) {
   // close the socket file descriptor
   if (tcp_fd != -1) {
@@ -492,6 +496,13 @@ static void handle_sigusr2(int sig) {
             ((Connection*) vector_get(connections, i))->client_port,
             ((Connection*) vector_get(connections, i))->connected_at);
   }
+}
+
+static void handle_sighup(int sig) {
+  // Reset sequence number without restarting the proces. Don't do it.
+  fprintf(stderr, "cq: !!! sequence number reset request @ %lu !!!", sequence_num);  
+  sequence_num -= sequence_num;
+  fprintf(stderr, "cq: !!! sequence number reset to 0 !!!");  
 }
 
 static void handle_sigusr1(int sig) {

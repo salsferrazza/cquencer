@@ -58,9 +58,11 @@ static void now(char* datestr);
 static int secs(void);
 static void logfile_name(char* logname);
 static void cleanup(void);
+static int register_signals(void);
 static void handle_sigint(int sig);
 static void handle_sigusr1(int sig);
 static void handle_sigusr2(int sig);
+static void handle_sighup(int sig);
 static void usage(void);
 static double get_mps(void);
 
