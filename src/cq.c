@@ -503,6 +503,7 @@ static void handle_sighup(int sig) {
   fprintf(stderr, "!!! sequence number reset request from %lu to 0 !!!", sequence_num);  
   sequence_num = 0;
   sprintf(sequence_chars, "%lu", sequence_num);
+  sprintf(seq_ns, "1:0,");
 }
 
 static void handle_sigusr1(int sig) {
