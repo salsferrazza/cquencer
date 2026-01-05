@@ -463,7 +463,9 @@ static void handle_signals(const int sig) {
     handle_sigint(sig);
     break;
   case SIGHUP:
-    handle_sighup(sig);
+    if (RESET_SEQ_ON_SIGHUP) {
+      handle_sighup(sig);
+    }
     break;
   default:
     return;
