@@ -502,6 +502,7 @@ static void handle_sighup(int sig) {
   // Reset sequence number without restarting the proces. Don't do it.
   fprintf(stderr, "cq: !!! sequence number reset request @ %lu !!!", sequence_num);  
   sequence_num -= sequence_num;
+  sprintf(sequence_chars, "%lu", sequence_num);
   fprintf(stderr, "cq: !!! sequence number reset to 0 !!!");  
 }
 
