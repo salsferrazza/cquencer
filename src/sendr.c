@@ -21,6 +21,11 @@ int main(int argc, char* argv[]) {
   atexit(cleanup);
   signal(SIGINT, handle_sigint);
 
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+    return EXIT_FAILURE;
+  }
+
   char* listen_port = argv[1];
 
   // to store the return value of various function calls for error checking
@@ -66,16 +71,30 @@ int main(int argc, char* argv[]) {
   printf("? ");
   while ((line_len = getline(&line, &line_cap, stdin)) > 0) {
     line[line_len - 1] = '\0'; // to ignore the newline character at the end
+    size_t payload_len = line_len - 1;
 
-    // send the message to the server
-    int bytes_sent = send(socket_fd, line, line_len, 0);
+    // dynamically allocate buffer for the netstring: length header + ':' + payload + ',' + '\0'
+    size_t ns_cap = 32 + payload_len;
+    char *ns_buf = malloc(ns_cap);
+    if (!ns_buf) {
+      perror("malloc()");
+      return EXIT_FAILURE;
+    }
+
+    // frame the input as a netstring (e.g., "hello" -> "5:hello,")
+    int ns_len = snprintf(ns_buf, ns_cap, "%zu:%s,", payload_len, line);
+
+    // send the framed message to the server
+    int bytes_sent = send(socket_fd, ns_buf, ns_len, 0);
+    free(ns_buf); // free the temporary buffer
+
     if (bytes_sent == -1) {
       perror("send()");
       return EXIT_FAILURE;
     }
 
-    // receive the message from the server
-    int bytes_read = recv(socket_fd, received_msg, sizeof received_msg, 0);
+    // receive the message from the server (leaving room for null terminator)
+    int bytes_read = recv(socket_fd, received_msg, sizeof(received_msg) - 1, 0);
     if (bytes_read == -1) {
       perror("recv()");
       return EXIT_FAILURE;
@@ -90,6 +109,7 @@ int main(int argc, char* argv[]) {
     printf("? ");
   }
 
+  free(line); // cleanly free getline buffer
   return EXIT_SUCCESS;
 }
 
