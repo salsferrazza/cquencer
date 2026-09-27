@@ -28,11 +28,12 @@
 #define MAX_FDS 65536
 
 // Netstring parser state machine per file descriptor
+// Buffer is pre-allocated at startup using values from cq.h
 typedef struct {
     int state; // 0=LEN, 1=DATA, 2=COMMA
     size_t expected_len;
     size_t data_bytes_read;
-    char *buffer;
+    char buffer[MAX_PAYLOAD_LENGTH + 1];
 } netstring_parser_t;
 
 static netstring_parser_t parsers[MAX_FDS];
@@ -214,11 +215,8 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < num_connections;) {
       Connection *conn = vector_get(connections, i);
       if (conn->state == CONN_STATE_END) {
-        // Clean up parser state to prevent memory leaks on disconnect
+        // Clean up parser state to prevent ghost data on fd reuse
         if (conn->fd >= 0 && conn->fd < MAX_FDS) {
-          if (parsers[conn->fd].buffer) {
-            free(parsers[conn->fd].buffer);
-          }
           memset(&parsers[conn->fd], 0, sizeof(netstring_parser_t));
         }
 
@@ -316,11 +314,8 @@ static bool accept_new_connection(void) {
     return false;
   }
 
-  // initialize parser state
+  // initialize static parser state for the new fd
   if (conn_fd >= 0 && conn_fd < MAX_FDS) {
-    if (parsers[conn_fd].buffer) {
-      free(parsers[conn_fd].buffer);
-    }
     memset(&parsers[conn_fd], 0, sizeof(netstring_parser_t));
   }
 
@@ -379,7 +374,7 @@ static void handle_tcp_io(Connection *conn) {
 
     netstring_parser_t *p = &parsers[conn->fd];
     
-    // Process TCP stream using netstring framing
+    // Process TCP stream using netstring framing into the pre-allocated buffer
     for (int i = 0; i < bytes_read; i++) {
       char c = conn->read_buffer[i];
       
@@ -387,13 +382,9 @@ static void handle_tcp_io(Connection *conn) {
         if (c >= '0' && c <= '9') {
           p->expected_len = p->expected_len * 10 + (c - '0');
         } else if (c == ':') {
-          if (p->expected_len > (MAX_PAYLOAD_LENGTH - 32)) {
+          // Safeguard to prevent overflowing the static buffer
+          if (p->expected_len > MAX_PAYLOAD_LENGTH) {
             conn->state = CONN_STATE_END;
-            return;
-          }
-          p->buffer = malloc(p->expected_len + 1);
-          if (!p->buffer) {
-            conn->state = CONN_STATE_END; 
             return;
           }
           p->state = (p->expected_len == 0) ? 2 : 1; 
@@ -440,9 +431,8 @@ static void handle_tcp_io(Connection *conn) {
             conn->state = CONN_STATE_RES;
           }
 
-          // Cleanup and reset parser for next frame in the stream
-          free(p->buffer);
-          p->buffer = NULL;
+          // Reset parser state for next frame in the stream
+          // We do not need to clear the buffer itself, just the state trackers
           p->state = 0;
           p->expected_len = 0;
           p->data_bytes_read = 0;
@@ -533,11 +523,6 @@ static void register_signals(void) {
 }
 
 static void cleanup(void) {
-  // clean up parser mallocs
-  for (int i = 0; i < MAX_FDS; i++) {
-    if (parsers[i].buffer) free(parsers[i].buffer);
-  }
-
   // close the socket file descriptor
   if (tcp_fd != -1) {
     close(tcp_fd);
