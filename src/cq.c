@@ -25,6 +25,19 @@
 #include "./vector.h"
 #include "./cq.h"
 
+#define MAX_FDS 65536
+
+// Netstring parser state machine per file descriptor
+// Buffer is pre-allocated at startup using values from cq.h
+typedef struct {
+    int state; // 0=LEN, 1=DATA, 2=COMMA
+    size_t expected_len;
+    size_t data_bytes_read;
+    char buffer[MAX_PAYLOAD_LENGTH + 1];
+} netstring_parser_t;
+
+static netstring_parser_t parsers[MAX_FDS];
+
 // startup time in UNIX seconds
 int started = 0;
 
@@ -48,9 +61,6 @@ int tcp_fd = -1;
 
 // the udp file descriptor
 int udp_fd = -1;
-
-// multicast address for send()
-sockaddr_in multicast_addr;
 
 // the sequence number
 unsigned long sequence_num = 0;
@@ -205,6 +215,11 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < num_connections;) {
       Connection *conn = vector_get(connections, i);
       if (conn->state == CONN_STATE_END) {
+        // Clean up parser state to prevent ghost data on fd reuse
+        if (conn->fd >= 0 && conn->fd < MAX_FDS) {
+          memset(&parsers[conn->fd], 0, sizeof(netstring_parser_t));
+        }
+
         // if the connection is in the end state, close the connection
         close(conn->fd);
 
@@ -253,23 +268,11 @@ int main(int argc, char *argv[]) {
         Connection *conn = vector_get(connections, i - 1);
 
         if (conn == NULL) {
-          // this should never happen, but just in case
           continue;
         }
 
-        // puts sequenced message into udp_output_buffer
+        // process TCP IO and handle sequenced message framing/sending
         handle_tcp_io(conn);
-        
-        // persist message locally if enabled
-        if (LOGMSG) {
-          fprintf(logptr, "%s", udp_output_buffer);
-        }
-
-        // send UDP packet to multicast group and port
-        handle_udp_io();
-
-        // reset values for next iteration
-        memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
 
         // checkpoint at minutely interval
         // to use for message rate calculation
@@ -311,6 +314,11 @@ static bool accept_new_connection(void) {
     return false;
   }
 
+  // initialize static parser state for the new fd
+  if (conn_fd >= 0 && conn_fd < MAX_FDS) {
+    memset(&parsers[conn_fd], 0, sizeof(netstring_parser_t));
+  }
+
   // get the client IP and port into a usable format
   char addr[addr_size];
   sprintf(addr, "%s", inet_ntoa(((struct sockaddr_in *) &client_addr)->sin_addr));
@@ -324,6 +332,7 @@ static bool accept_new_connection(void) {
     .client_port = port,
     .connected_at = secs()
   };
+  conn.write_buffer[0] = '\0'; // ensure clean buffer
 
   // add the connection to the connections vector
   vector_push(connections, &conn);
@@ -332,8 +341,6 @@ static bool accept_new_connection(void) {
 }
 
 static void handle_udp_io(void) {
-  // I/O in the function name is a misnomer,
-  // multicast just gives you O
   if (strlen(udp_output_buffer) > 0) {
     int nbytes = sendto(
                         udp_fd,
@@ -345,7 +352,6 @@ static void handle_udp_io(void) {
                         );
     if (nbytes < 0) {
       perror("sendto");
-      // Since we're not buffering messages and retrying, crash.
       fprintf(stderr,
               "Could not send datagram to multicast group. Last sequence # sent was %lu\n",
               sequence_num - 1);
@@ -364,48 +370,79 @@ static void handle_tcp_io(Connection *conn) {
     } else if (bytes_read == 0) {
       conn->state = CONN_STATE_END;
       return;
-    } else if (bytes_read <= 1) {
-      // if there is no content, just return
-      // the current sequence number
-      send_current_sequence_num(conn);
-      return;
     }
 
-    // terminate read buffer
-    conn->read_buffer[bytes_read] = '\0';
-        
-    // save string representation of the sequence # 
-    sprintf(sequence_chars, "%lu", ++sequence_num);
+    netstring_parser_t *p = &parsers[conn->fd];
     
-    // manufacture output message
-    seq_len = strlen(sequence_chars);
+    // Process TCP stream using netstring framing into the pre-allocated buffer
+    for (int i = 0; i < bytes_read; i++) {
+      char c = conn->read_buffer[i];
+      
+      if (p->state == 0) { // LENGTH
+        if (c >= '0' && c <= '9') {
+          p->expected_len = p->expected_len * 10 + (c - '0');
+        } else if (c == ':') {
+          // Safeguard to prevent overflowing the static buffer
+          if (p->expected_len > MAX_PAYLOAD_LENGTH) {
+            conn->state = CONN_STATE_END;
+            return;
+          }
+          p->state = (p->expected_len == 0) ? 2 : 1; 
+        } else if (c == '\n' || c == '\r' || c == ' ') {
+          // Allow loose whitespace fallback for manual telnet users
+          if (c == '\n') send_current_sequence_num(conn);
+        } else {
+          // Framing error on unexpected character
+          conn->state = CONN_STATE_END;
+          return;
+        }
+      } else if (p->state == 1) { // DATA
+        p->buffer[p->data_bytes_read++] = c;
+        if (p->data_bytes_read == p->expected_len) {
+          p->buffer[p->expected_len] = '\0';
+          p->state = 2;
+        }
+      } else if (p->state == 2) { // COMMA
+        if (c == ',') {
+          // FRAME FULLY COMPLETED
+          if (p->expected_len == 0) {
+            // Heartbeat/query detected (0 length payload: "0:,")
+            send_current_sequence_num(conn);
+          } else {
+            // Standard sequenced message payload
+            sprintf(sequence_chars, "%lu", ++sequence_num);
+            seq_len = strlen(sequence_chars);
+            sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
+            
+            payload_len = p->expected_len;
+            snprintf(payload_ns, MAX_PAYLOAD_LENGTH + 1, "%d:%s,", payload_len, p->buffer);
+            
+            total_msg_len = strlen(seq_ns) + strlen(payload_ns);
+            sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
 
-    assert(seq_len > 0);    
-    sprintf(seq_ns, "%d:%s,", seq_len, sequence_chars);
+            if (LOGMSG) {
+              fprintf(logptr, "%s", udp_output_buffer);
+            }
+            handle_udp_io();
+            memset(udp_output_buffer, 0, MAX_FRAME_LENGTH);
 
-    total_msg_len += strlen(seq_ns);
+            // populate TCP write buffer for client response
+            strcat(conn->write_buffer, seq_ns);
+            conn->state = CONN_STATE_RES;
+          }
 
-    assert(strlen(seq_ns) > 0);
-    
-    payload_len = strlen(conn->read_buffer);
-    int limit = strlen(conn->read_buffer) + payload_len + strlen(":,");
-    snprintf(payload_ns, limit, "%d:%s,", payload_len, conn->read_buffer);
-
-    total_msg_len += strlen(payload_ns);
-    
-    sprintf(udp_output_buffer, "%d:%s%s,", total_msg_len, seq_ns, payload_ns);
-
-    // populate TCP write buffer for client response
-    sprintf(conn->write_buffer, "%s", seq_ns);
-
-    // this connection is ready to send a response now
-    conn->state = CONN_STATE_RES;
-
-    // reset variables for next iteration
-    memset(payload_ns, 0, strlen(payload_ns));
-    total_msg_len = 0;
-    seq_len = 0;
-    payload_len = 0;
+          // Reset parser state for next frame in the stream
+          // We do not need to clear the buffer itself, just the state trackers
+          p->state = 0;
+          p->expected_len = 0;
+          p->data_bytes_read = 0;
+        } else {
+          // Missing comma trailing delimiter
+          conn->state = CONN_STATE_END;
+          return;
+        }
+      }
+    }
    
   } else if (conn->state == CONN_STATE_RES) {    
     int bytes_sent =
@@ -414,6 +451,8 @@ static void handle_tcp_io(Connection *conn) {
       conn->state = CONN_STATE_END;
       return;
     }
+    // Clear write buffer for the next request
+    conn->write_buffer[0] = '\0';
     conn->state = CONN_STATE_REQ;
   } else {
     fputs("handle_tcp_io(): invalid state\n", stderr);
@@ -447,7 +486,7 @@ static double get_mps(void) {
 }
 
 static void send_current_sequence_num(Connection *conn) { 
-  sprintf(conn->write_buffer, "%s", seq_ns);
+  strcat(conn->write_buffer, seq_ns); // Use strcat to support query pipelining
   conn->state = CONN_STATE_RES;
 }
 
