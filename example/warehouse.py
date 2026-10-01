@@ -2,33 +2,14 @@ import sys
 
 from inventory import InventoryDestination
 from sender import SenderMixin
-from time import sleep
 
 class Warehouse(InventoryDestination, SenderMixin):
     def __init__(self, group, port, remote_port):
-        self.file_path = "data/inventory.txt"
         print("warehouse init")
         self.remote_port = remote_port
         self.connect("localhost", remote_port)
+        super().__init__(group, port)        
         print("warehouse init done")
-        super().__init__(group, port)
-        sleep(5)
-        print("submitting inventory")
-        self.submit_inventory()
-        
-
-    def submit_inventory(self):
-        try:
-            with open(self.file_path, 'r') as file:
-                for line in file:
-                    self.send(line.strip())
-        except FileNotFoundError:
-            print(f"Error: The file '{file_path}' was not found.")
-            sys.exit(1)
-            
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            sys.exit(1)
             
     def on_message(self, seq, msg):
         super().on_message(seq, msg)
