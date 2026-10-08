@@ -482,11 +482,17 @@ static void now(char *datestr) {
 }
 
 static double get_mps(void) {
-    return ((sequence_num - checkpoint_sequence_num) / (double) (secs() - checkpoint_epoch));      
+    int elapsed = secs() - checkpoint_epoch;
+    // Prevent division by zero
+    if (elapsed == 0) {
+        // If less than a second has passed, just return the raw count
+        return (double)(sequence_num - checkpoint_sequence_num);
+    }
+    return ((sequence_num - checkpoint_sequence_num) / (double) elapsed);      
 }
 
 static void send_current_sequence_num(Connection *conn) { 
-  strcat(conn->write_buffer, seq_ns); // Use strcat to support query pipelining
+  strcat(conn->write_buffer, seq_ns);
   conn->state = CONN_STATE_RES;
 }
 
