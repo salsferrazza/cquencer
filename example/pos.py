@@ -5,12 +5,15 @@ from time import sleep
 from inventory import InventoryDestination
 
 class PointOfSale(InventoryDestination, SenderMixin):
-    def __init__(self, group, port, remote_port):
-        print("pos init")
+    pos_index = 0;
+    
+    def __init__(self, group, port, remote_port, pos_index):
+        print("pos init, index " + str(pos_index))
         super().__init__(group, port)
+        self.pos_index = pos_index
         self.remote_port = remote_port
         self.connect("localhost", remote_port)
-        print("pos init done")
+        print("pos init done, index " + str(pos_index))
         
     def send_random_order(self):        
         sku_count = self.inventory.count()
@@ -22,7 +25,7 @@ class PointOfSale(InventoryDestination, SenderMixin):
               if skuqty > 1 else 1
             self.send_order(sku, qty)
         else:
-            print("No SKUs in stock")
+            print(str(self.pos_index) + " No SKUs in stock")
             sleep(10)
         
     def generate_orders(self):
